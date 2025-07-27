@@ -115,7 +115,7 @@ if __name__ == "__main__":
                         help='reducing factor for the lr in a plateu (default: 0.1)')
     parser.add_argument('--net_filter_size', type=int, nargs='+', default=[64, 128, 196, 256, 320],
                         help='filter size in resnet layers (default: [64, 128, 196, 256, 320]).')
-    parser.add_argument('--net_seq_lengh', type=int, nargs='+', default=[4096, 1024, 256, 64, 16],
+    parser.add_argument('--net_seq_length', type=int, nargs='+', default=[4096, 1024, 256, 64, 16],
                         help='number of samples per resnet layer (default: [4096, 1024, 256, 64, 16]).')
     parser.add_argument('--dropout_rate', type=float, default=0.8,
                         help='dropout rate (default: 0.8).')
@@ -182,7 +182,7 @@ if __name__ == "__main__":
     N_LEADS = 12  # the 12 leads
     N_CLASSES = 1  # just the age
     model = ResNet1d(input_dim=(N_LEADS, args.seq_length),
-                     blocks_dim=list(zip(args.net_filter_size, args.net_seq_lengh)),
+                     blocks_dim=list(zip(args.net_filter_size, args.net_seq_length)),
                      n_classes=N_CLASSES,
                      kernel_size=args.kernel_size,
                      dropout_rate=args.dropout_rate)

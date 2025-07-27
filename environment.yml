@@ -1,0 +1,17 @@
+name: ecg_precise
+
+channels:
+    - conda-forge
+    - pytorch
+
+dependencies:
+    - h5py>=2.8
+    - matplotlib>=3.2
+    - numpy>=1.14.3
+    - pandas>=0.22
+    - pytorch==1.2
+    - scikit-learn==1.7.1
+    - seaborn>=0.9
+    - torchvision
+    - tqdm>=4.26
+    - jupyter
