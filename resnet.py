@@ -145,4 +145,3 @@ class ResNet1d(nn.Module):
         # Fully conected layer
         x = self.lin(x)
         return x
-
