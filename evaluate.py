@@ -10,8 +10,12 @@ import argparse
 from warnings import warn
 import pandas as pd
 
+from constants import *
+
+default_input_file_name = f'{DATA_INPUT_DIR}/exams_part{FILE_NUM}_abs_age_{ABS_AGE_DIFF}.hdf5'
 
 if __name__ == "__main__":
+
     parser = argparse.ArgumentParser(add_help=False)
     parser.add_argument('--mdl', type=str,
                         help='folder containing model.', default='model')
@@ -125,8 +129,10 @@ if __name__ == "__main__":
     # Save predictions
     df = pd.DataFrame({'ids': ids, 'predicted_age': predicted_age})
     df = df.set_index('ids')
-    df.to_csv(args.output)
+    print(f"Output csv shape: {df.shape}")
+    # df.to_csv(args.output)
+    print(f"reconstructed_input shape: {reconstructed_input.shape}")
 
-    reconstructed_file = args.output.replace('.csv', '.npy')
-    np.save(reconstructed_file, reconstructed_input)
+    # reconstructed_file = args.output.replace('.csv', '.npy')
+    # np.save(reconstructed_file, reconstructed_input)
 
