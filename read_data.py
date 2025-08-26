@@ -5,15 +5,21 @@ import logging
 import numpy as np
 import pandas as pd
 from pathlib import Path
-from tempfile import TemporaryFile
 
 
-from constants import *
+from constants import (
+    FILE_NUM,
+    DATA_INPUT_DIR,
+    DATA_OUTPUT_DIR,
+    AGE_FILTER,
+    ABS_AGE_DIFF,
+    EXAM_ID,
+)
 
 
 def get_exam_ids_per_file(
-        file_num=16
-    ):
+        file_num
+):
     """
     Takes in the the file number to process
     Returns file_path to read and exam_ids to read
@@ -25,7 +31,7 @@ def get_exam_ids_per_file(
     # Keep only the ones that have normal ECG and the absolute
     # difference between their chronological and predicted age < ABS_AGE_DIFF
     df = df[
-        (abs (df['age']- df['nn_predicted_age']) < ABS_AGE_DIFF) &
+        (abs(df['age'] - df['nn_predicted_age']) < ABS_AGE_DIFF) &
         (df['normal_ecg'])
     ].copy()
 
@@ -56,7 +62,7 @@ def extract_selected_tracings(trace_file_path, ids_popln):
             logging.info(f"selected_tracings.shape: {selected_tracings.shape}")
             logging.info(f"len(ids_popln): {len(ids_popln)}")
             assert (len(selected_tracings) == len(ids_popln)), \
-            f"The lengths of the arrays, indices and traces, do not match."
+                "The lengths of the arrays, indices and traces, do not match."
 
             p = Path(DATA_OUTPUT_DIR)
             p.mkdir(parents=True, exist_ok=True)
@@ -69,13 +75,13 @@ def extract_selected_tracings(trace_file_path, ids_popln):
             # return selected_tracings, hdf5_path, npy_path
 
             # Don't try to save the npy file if the hfd5 file cannot be opened.
-            if isinstance (selected_tracings, np.ndarray):
+            if isinstance(selected_tracings, np.ndarray):
                 logging.info("Found tracings")
                 with open(npy_path, 'wb') as f:
                     np.save(f, selected_tracings)
-                    logging.info(f"Saved npy file")
+                    logging.info("Saved npy file")
             else:
-                logging.error("Did not save npy file.")
+                logging.error("Did not find tracings; didn't save selected tracings npy file.")
 
             with h5py.File(hdf5_path, 'w') as f:
                 f.create_dataset('exam_id', data=ids_popln)
@@ -91,6 +97,6 @@ def write_selected_input_files():
 
     # Write numpy files for Deejay
 
+
 if __name__ == "__main__":
     write_selected_input_files()
-

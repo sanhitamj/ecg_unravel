@@ -100,7 +100,7 @@ if __name__ == "__main__":
                         help='sample frequency (in Hz) in which all traces will be resampled at (default: 400)')
     parser.add_argument('--seq_length', type=int, default=4096,
                         help='size (in # of samples) for all traces. If needed traces will be zeropadded'
-                                    'to fit into the given size. (default: 4096)')
+                        'to fit into the given size. (default: 4096)')
     parser.add_argument('--scale_multiplier', type=int, default=10,
                         help='multiplicative factor used to rescale inputs.')
     parser.add_argument('--batch_size', type=int, default=32,
@@ -224,9 +224,9 @@ if __name__ == "__main__":
         if learning_rate < args.min_lr:
             break
         # Print message
-        tqdm.write('Epoch {:2d}: \tTrain Loss {:.6f} ' \
-                  '\tValid Loss {:.6f} \tLearning Rate {:.7f}\t'
-                 .format(ep, train_loss, valid_loss, learning_rate))
+        tqdm.write('Epoch {:2d}: \tTrain Loss {:.6f} '
+                   '\tValid Loss {:.6f} \tLearning Rate {:.7f}\t'
+                   .format(ep, train_loss, valid_loss, learning_rate))
         # Save history
         history = history.append({"epoch": ep, "train_loss": train_loss,
                                   "valid_loss": valid_loss, "lr": learning_rate}, ignore_index=True)
@@ -234,5 +234,3 @@ if __name__ == "__main__":
         # Update learning rate
         scheduler.step(valid_loss)
     tqdm.write("Done!")
-
-

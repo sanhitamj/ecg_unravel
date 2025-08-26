@@ -1,50 +1,44 @@
-# Imports
-from resnet import ResNet1d
-import tqdm
 import h5py
 import torch
 import os
 import json
+import logging
 import numpy as np
-import argparse
-from warnings import warn
 import pandas as pd
+import tqdm
 
-from constants import *
+from constants import (
+    ABS_AGE_DIFF,
+    batch_size,
+    # DATA_INPUT_DIR,
+    DATA_OUTPUT_DIR,
+    FILE_NUM,
+    PREDICTED_AGE_CSV,
+    REPLACE_AGE,
+    REPLACE_AGE_RANGE,
+    RECONSTED_ECG,
+    traces_dset
+)
+from resnet import ResNet1d
 
-default_input_file_name = f'{DATA_INPUT_DIR}/exams_part{FILE_NUM}_abs_age_{ABS_AGE_DIFF}.hdf5'
+# default_input_file_   name = f'{DATA_INPUT_DIR}/exams_part{FILE_NUM}_abs_age_{ABS_AGE_DIFF}.hdf5'
 
-if __name__ == "__main__":
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+mdl = 'model'
 
-    parser = argparse.ArgumentParser(add_help=False)
-    parser.add_argument('--mdl', type=str,
-                        help='folder containing model.', default='model')
-    parser.add_argument('--path_to_traces', type=str, default='data/exams_part16_abs_age_1.hdf5',
-                        help='path to hdf5 containing ECG traces.')
-    parser.add_argument('--path_to_ages', type=str, default='data/age_part16_abs_age_1.npy',
-                        help='path to npy containing ages of the respective patients.')
-    parser.add_argument('--batch_size', type=int, default=8,
-                        help='number of exams per batch.')
-    parser.add_argument('--output', type=str, default='output/predicted_age.csv',
-                        help='output file.')
-    parser.add_argument('--traces_dset', default='tracings',
-                         help='traces dataset in the hdf5 file.')
-    parser.add_argument('--ids_dset',
-                         help='ids dataset in the hdf5 file.')
-    args, unk = parser.parse_known_args()
-    # Check for unknown options
-    if unk:
-        warn("Unknown arguments:" + str(unk) + ".")
-    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    # Get checkpoint
-    ckpt = torch.load(
-        os.path.join(args.mdl, 'model.pth'),
-        weights_only=False,
-        map_location=lambda storage,
-        loc: storage
-    )
-    # Get config
-    config = os.path.join(args.mdl, 'config.json')
+# Get checkpoint
+ckpt = torch.load(
+    os.path.join(mdl, 'model.pth'),
+    weights_only=False,
+    map_location=lambda storage,
+    loc: storage
+)
+
+
+def predict():
+    # # Get config
+
+    config = os.path.join(mdl, 'config.json')
     with open(config, 'r') as f:
         config_dict = json.load(f)
     # Get model
@@ -61,17 +55,31 @@ if __name__ == "__main__":
     model.load_state_dict(ckpt["model"])
     model = model.to(device)
 
+    path_to_traces = f'{DATA_OUTPUT_DIR}/exams_part{FILE_NUM}_abs_age{ABS_AGE_DIFF}_abs_age{ABS_AGE_DIFF}.hdf5'
+    path_to_traces = "output/part16_age_diff_1_age_20/exams_part16_abs_age_1.hdf5"
+
     # Get traces
-    ff = h5py.File(args.path_to_traces, 'r')
-    traces = ff[args.traces_dset]
+    ff = h5py.File(path_to_traces, 'r')
+    traces = ff[traces_dset]
+    # traces = np.load(f'{DATA_OUTPUT_DIR}/exams_part{FILE_NUM}_abs_age{ABS_AGE_DIFF}.npy')
+    logging.info(f"type(trace): {type(traces)}")
     n_total = len(traces)
-    if args.ids_dset:
-        ids = ff[args.ids_dset]
+    ids = range(n_total)
+
+    KEEP_AGE = False
+    path_to_ages = False
+    if KEEP_AGE:
+        ages = np.load(path_to_ages)
+    elif REPLACE_AGE:
+        ages = np.array([REPLACE_AGE] * n_total)
     else:
-        ids = range(n_total)
+        # If the age range is used use only one ID at a time, for now.
+        ages = np.array([age for age in REPLACE_AGE_RANGE])
+        traces = np.repeat(traces[None, :], n_total, axis=0)
+        ids = [0]
 
     # Read ages
-    ages = np.load(args.path_to_ages)
+    # ages = np.load(args.path_to_ages)
 
     # Get dimension
     predicted_age = np.zeros((n_total,))
@@ -80,14 +88,14 @@ if __name__ == "__main__":
     # Evaluate on test data
     model.eval()
     n_total, n_samples, n_leads = traces.shape
-    n_batches = int(np.ceil(n_total/args.batch_size))
+    n_batches = int(np.ceil(n_total/batch_size))
 
     # Compute gradients
     predicted_age = np.zeros((n_total,))
     end = 0
     for i in tqdm.tqdm(range(n_batches)):
         start = end
-        end = min((i + 1) * args.batch_size, n_total)
+        end = min((i + 1) * batch_size, n_total)
         # with torch.no_grad():
 
         x_leaf = torch.tensor(traces[start:end, :, :], dtype=torch.float32, requires_grad=True, device=device)
@@ -101,7 +109,7 @@ if __name__ == "__main__":
         #     requires_grad=True
         # ).transpose(-1, -2)
         # x = x.to(device, dtype=torch.float32)
-        print (f"x.shape: {x.shape}")
+        print(f"x.shape: {x.shape}")
         y_pred = model(x)
 
         # Example target tensor for backprop — must match your task
@@ -130,9 +138,11 @@ if __name__ == "__main__":
     df = pd.DataFrame({'ids': ids, 'predicted_age': predicted_age})
     df = df.set_index('ids')
     print(f"Output csv shape: {df.shape}")
-    # df.to_csv(args.output)
-    print(f"reconstructed_input shape: {reconstructed_input.shape}")
+    df.to_csv(PREDICTED_AGE_CSV, index=False)
+    logging.info(f"reconstructed_input shape: {reconstructed_input.shape}")
 
-    # reconstructed_file = args.output.replace('.csv', '.npy')
-    # np.save(reconstructed_file, reconstructed_input)
+    np.save(RECONSTED_ECG, reconstructed_input)
 
+
+if __name__ == "__main__":
+    predict()

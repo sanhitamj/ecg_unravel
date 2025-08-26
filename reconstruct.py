@@ -1,10 +1,8 @@
 import logging
-import numpy as np
-import pandas as pd
 
-# from evaluate import predict
+from evaluate import predict
 from read_data import write_selected_input_files
-from constants import *
+# from constants import *
 
 logging.basicConfig(
     format='%(asctime)s %(levelname)-8s %(message)s',
@@ -14,3 +12,4 @@ logging.basicConfig(
 
 if __name__ == "__main__":
     write_selected_input_files()
+    predict()

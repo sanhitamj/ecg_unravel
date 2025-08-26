@@ -110,7 +110,9 @@ if __name__ == "__main__":
     age_at_exam = np.array(df[args.age_col])
     patient_ids = np.array(df[args.patient_id_col], dtype=int)
     # define splits
-    patients_in_splits, single_exam_in_split, exams_in_splits = get_splits(age_at_exam, patient_ids, exam_ids, args.splits)
+    patients_in_splits, single_exam_in_split, exams_in_splits = get_splits(
+        age_at_exam, patient_ids, exam_ids, args.splits
+    )
 
     if not args.no_plot:
         import seaborn as sns
@@ -123,4 +125,3 @@ if __name__ == "__main__":
             sns.histplot(age, ax=ax[i], kde=False, bins=range(0, 130, 1))
             sns.histplot(age_single_exam, ax=ax[i], kde=False, bins=range(0, 130, 1))
         plt.show()
-
