@@ -1,3 +1,11 @@
+# To begin
+
+* Use `environment.yml` for the setup
+* Download the metadata (exams.csv) and any data file from https://zenodo.org/records/4916206
+* edit `constants.py`
+* Run `python reconstruct.py`
+
+
 # Predicting age from the electrocardiogram and its usage as a mortality predictor
 
 Scripts and modules for training and testing deep neural networks for ECG automatic classification.
@@ -6,8 +14,8 @@ https://www.nature.com/articles/s41467-021-25351-7.
 
 Citation:
 ```
-Lima, E.M., Ribeiro, A.H., Paixão, G.M.M. et al. Deep neural network-estimated electrocardiographic age as a 
-mortality predictor. Nat Commun 12, 5117 (2021). https://doi.org/10.1038/s41467-021-25351-7. 
+Lima, E.M., Ribeiro, A.H., Paixão, G.M.M. et al. Deep neural network-estimated electrocardiographic age as a
+mortality predictor. Nat Commun 12, 5117 (2021). https://doi.org/10.1038/s41467-021-25351-7.
 ```
 
 Bibtex:
@@ -31,10 +39,10 @@ Bibtex:
 Three different cohorts are used in the study:
 
 1. The `CODE` study cohort, with n=1,558,415 patients was used for training and testing:
-   - exams from 15% of the patients in this cohort were used for testing. This sub-cohort is refered as `CODE-15%`. 
+   - exams from 15% of the patients in this cohort were used for testing. This sub-cohort is refered as `CODE-15%`.
      The `CODE-15\%` dataset is openly available: [doi: 10.5281/zenodo.4916206 ](https://doi.org/10.5281/zenodo.4916206).
-   - the remainign 85%  of the patients were used for developing the neural network model. 
-     The full CODE dataset that was used for training is available upon 
+   - the remainign 85%  of the patients were used for developing the neural network model.
+     The full CODE dataset that was used for training is available upon
      request for research purposes: [doi: 10.17044/scilifelab.15169716](https://doi.org/10.17044/scilifelab.15169716)
 2. The `SaMi-Trop` cohort, with n=1,631 patients, is used for external validation.
     - The dataset is openly available: [doi: 10.5281/zenodo.4905618](https://doi.org/10.5281/zenodo.4905618)
@@ -48,14 +56,14 @@ The code training and evaluation is implemented in Python, contains
 
 ## Model
 
-The model used in the paper is a residual neural network. The architecture implementation 
-in pytorch is available in `resnet.py`. It follows closely 
+The model used in the paper is a residual neural network. The architecture implementation
+in pytorch is available in `resnet.py`. It follows closely
 [this architecture](https://www.nature.com/articles/s41467-020-15432-4), except that there is no sigmoid at the last layer.
 
 ![resnet](https://media.springernature.com/full/springer-static/image/art%3A10.1038%2Fs41467-020-15432-4/MediaObjects/41467_2020_15432_Fig3_HTML.png?as=webp)
 
-The model can be trained using the script `train.py`. Alternatively, 
-pre-trained weighs trained on the code dataset for the model described in the paper 
+The model can be trained using the script `train.py`. Alternatively,
+pre-trained weighs trained on the code dataset for the model described in the paper
 is available in [doi.org/10.5281/zenodo.4892365](https://doi.org/10.5281/zenodo.4892365)
 in the following dropbox mirror
 [here](https://www.dropbox.com/s/thvqwaryeo8uemo/model.zip?dl=0).
@@ -69,14 +77,14 @@ unzip model.zip
 
 ## Requirements
 
-This code was tested on Python 3 with Pytorch 1.2. It uses `numpy`, `pandas`, 
+This code was tested on Python 3 with Pytorch 1.2. It uses `numpy`, `pandas`,
 `h5py` for  loading and processing the data and `matplotlib` and `seaborn`
 for the plots. See `requirements.txt` to see a full list of requirements
 and library versions.
 
 **For tensorflow users:** If you are interested in a tensorflow implementation, take a look in the repository:
-https://github.com/antonior92/automatic-ecg-diagnosis. There we provide a tensorflow/keras implementation of the same 
-resnet-based model. The problem there is the abnormality classification from the ECG, nonetheless simple modifications 
+https://github.com/antonior92/automatic-ecg-diagnosis. There we provide a tensorflow/keras implementation of the same
+resnet-based model. The problem there is the abnormality classification from the ECG, nonetheless simple modifications
 should suffice for dealing with age prediction
 
 ## Folder content
@@ -90,16 +98,16 @@ $ python train.py PATH_TO_HDF5 PATH_TO_CSV
 
 - ``evaluate.py``: Script for generating the neural network predictions on a given dataset.
 ```bash
-$ python evaluate.py PATH_TO_MODEL PATH_TO_HDF5_ECG_TRACINGS --output PATH_TO_OUTPUT_FILE 
+$ python evaluate.py PATH_TO_MODEL PATH_TO_HDF5_ECG_TRACINGS --output PATH_TO_OUTPUT_FILE
 ```
 
 
 - ``resnet.py``: Auxiliary module that defines the architecture of the deep neural network.
 
 
-- ``formulate_problem.py``: Script that separate patients into training, validation and 
+- ``formulate_problem.py``: Script that separate patients into training, validation and
 ```bash
-$ python predict.py PATH_TO_CSV 
+$ python predict.py PATH_TO_CSV
 ```
 
 - ``plot_learning_curves.py``: Auxiliary script that plots learning curve of the model.

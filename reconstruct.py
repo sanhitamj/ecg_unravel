@@ -10,12 +10,14 @@ from pathlib import Path
 import torch
 
 from constants import (
-    FILE_NUM,
     DATA_INPUT_DIR,
     DATA_OUTPUT_DIR,
     AGE_FILTER,
     ABS_AGE_DIFF,
     EXAM_ID,
+    FILE_NUM,
+    N_LEADS,
+    SAVE_HDF5,
 )
 
 from evaluate import predict
@@ -26,6 +28,7 @@ logging.basicConfig(
     level=logging.INFO,
     datefmt='%Y-%m-%d %H:%M:%S'
 )
+
 
 # setting up the model
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -41,8 +44,6 @@ ckpt = torch.load(
 config = os.path.join(mdl, 'config.json')
 with open(config, 'r') as f:
     config_dict = json.load(f)
-# Get model
-N_LEADS = 12
 model = ResNet1d(
     input_dim=(N_LEADS, config_dict['seq_length']),
     blocks_dim=list(zip(config_dict['net_filter_size'], config_dict['net_seq_lengh'])),
@@ -56,13 +57,9 @@ model.load_state_dict(ckpt["model"])
 model = model.to(device)
 
 
-
-def get_exam_ids_per_file(
-        file_num
-):
+def get_exam_ids_per_file():
     """
-    Takes in the the file number to process
-    Returns file_path to read and exam_ids to read
+    Returns file_path to read and filtered dataframe according to filters
     """
 
     # Read the metadata file
@@ -79,18 +76,16 @@ def get_exam_ids_per_file(
     if AGE_FILTER:
         df = df[df['age'] == AGE_FILTER].copy()
 
-    logging.info(f"Found {len(df)} patients in file num {file_num}.")
-    trace_file_name = f"exams_part{file_num}.hdf5"
+    logging.info(f"Found {len(df)} patients in file num {FILE_NUM}.")
+    trace_file_name = f"exams_part{FILE_NUM}.hdf5"
     trace_file_path = f"{DATA_INPUT_DIR}/{trace_file_name}"
-    return trace_file_path, df[df['trace_file'] == trace_file_name][EXAM_ID]
+    return trace_file_path, df[df['trace_file'] == trace_file_name]
 
 
 def extract_selected_tracings(
         trace_file_path,
         ids_popln,
-        file_num,
-        hdf5_file=False
-    ):
+):
 
     logging.info(f"reading trace file: {trace_file_path}")
 
@@ -104,55 +99,69 @@ def extract_selected_tracings(
             indices = np.where(mask)[0]
 
             # Now read only the matching tracings
-            selected_tracings = tracings[indices]  # shape: (len(indices), ...)
-            assert (len(selected_tracings) == len(ids_popln)), \
+            selected_traces = tracings[indices]  # shape: (len(indices), ...)
+            assert (len(selected_traces) == len(ids_popln)), \
                 "The lengths of the arrays, indices and traces, do not match."
 
             p = Path(DATA_OUTPUT_DIR)
             # Create a directory if doesn't exist
             p.mkdir(parents=True, exist_ok=True)
 
-            npy_path = f"{DATA_OUTPUT_DIR}/p{file_num}_age_diff_{ABS_AGE_DIFF}_orig.npy"
+            npy_path = f"{DATA_OUTPUT_DIR}/p{FILE_NUM}_age_diff_{ABS_AGE_DIFF}_orig.npy"
+            if AGE_FILTER:
+                npy_path = npy_path.replace("_orig.npy", f"_age_{AGE_FILTER}_orig.npy")
             # return selected_tracings, hdf5_path, npy_path
 
             # Don't save the npy file if the hfd5 file cannot be opened.
-            if isinstance(selected_tracings, np.ndarray):
+            if isinstance(selected_traces, np.ndarray):
                 logging.info("Found tracings")
                 with open(npy_path, 'wb') as f:
-                    np.save(f, selected_tracings)
+                    np.save(f, selected_traces)
                     logging.info("Saved npy file")
             else:
                 logging.error("Did not find tracings; didn't save selected tracings npy file.")
 
             # If working with massive data, using hdf5 file.
-            if hdf5_file:
+            if SAVE_HDF5:
                 hdf5_path = trace_file_path.split("/")[-1].replace(
                     ".hdf5", f"_abs_age_{ABS_AGE_DIFF}.hdf5"
                 )
                 hdf5_path = f"{DATA_OUTPUT_DIR}/{hdf5_path}"
                 with h5py.File(hdf5_path, 'w') as f:
                     f.create_dataset('exam_id', data=ids_popln)
-                    f.create_dataset('tracings', data=selected_tracings, compression='gzip')
+                    f.create_dataset('tracings', data=selected_traces, compression='gzip')
+        return selected_traces
 
     except OSError:
         logging.error(f"File {trace_file_path} corrupted. Download again.")
 
 
 def reconstruct_traces(
-        input_trace_file,
-        ids_popln,
+        traces,
+        df_metadata,
+        model,
 ):
-    for idx, ids_popln in enumerate(ids_popln):
-        predict
+    assert (len(traces) == len(df_metadata)), \
+        "Lengths of traces and metadata do not match."
+    ids_popln = df_metadata[EXAM_ID].values
+    real_ages = df_metadata['age'].values
 
+    recon_ages = [age for age in range(20, 81)]
 
-
-def write_selected_input_files():
-    trace_file_path, ids_popln = get_exam_ids_per_file(file_num=FILE_NUM)
-    extract_selected_tracings(trace_file_path, ids_popln)
-
-    # Write numpy files for Deejay
+    for i, exam_id in enumerate(ids_popln):
+        recon_trace = predict(
+            model,
+            traces[i, :, :],
+            recon_ages,
+        )
+        recon_file_path = f"{DATA_OUTPUT_DIR}/id_{exam_id}_age_{real_ages[i]}_recon.npy"
+        np.save(recon_file_path, recon_trace)
 
 
 if __name__ == "__main__":
-    write_selected_input_files()
+    trace_file_path, df = get_exam_ids_per_file()
+    selected_traces = extract_selected_tracings(
+        trace_file_path,
+        df[EXAM_ID]
+    )
+    reconstruct_traces(selected_traces, df, model)
