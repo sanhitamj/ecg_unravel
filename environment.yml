@@ -11,8 +11,9 @@ dependencies:
     - matplotlib>=3.2
     - numpy>=1.14.3
     - pandas>=0.22
-    - pytorch==1.2
+    - pooch=1.8.2
+    - pytorch>=1.2
     - scikit-learn==1.7.1
     - seaborn>=0.9
-    - torchvision
+    - torchvision=0.22.1
     - tqdm>=4.26
