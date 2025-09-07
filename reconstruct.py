@@ -160,6 +160,7 @@ def reconstruct_traces(
 
 if __name__ == "__main__":
     trace_file_path, df = get_exam_ids_per_file()
+    df.to_csv(f"{DATA_OUTPUT_DIR}/exams_metadata.csv", index=False)
     selected_traces = extract_selected_tracings(
         trace_file_path,
         df[EXAM_ID]

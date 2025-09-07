@@ -1,8 +1,18 @@
-# To begin
+# To Reconstruct ECG traces
 
-* Use `environment.yml` for the setup
+* Use `environment.yml` for the setup.
 * Download the metadata (exams.csv) and any data file from https://zenodo.org/records/4916206
-* edit `constants.py`
+* Save the files downloaded from zenodo in `DATA_INPUT_DIR`
+* Download the model weights:
+```bash
+  wget https://www.dropbox.com/s/thvqwaryeo8uemo/model.zip?dl=0 -O model.zip
+  unzip model.zip
+```
+This will create a directory `model` and will save file `model.pth`
+* Edit `constants.py`
+  * As it is, the output will be a lot of files. Add a constrain `AGE_FILTER = 42`, for example,
+  to run the reconstruction for only those with age 42 years.
+  * Or `KEEP_AGE = True` will run ECG reconstruction just for their reported chronological age.
 * Run `python reconstruct.py`
 
 
