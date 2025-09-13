@@ -35,12 +35,23 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 mdl = 'model'
 
 # Get checkpoint
-ckpt = torch.load(
-    os.path.join(mdl, 'model.pth'),
-    weights_only=False,
-    map_location=lambda storage,
-    loc: storage
-)
+try:
+    ckpt = torch.load(
+        os.path.join(mdl, 'model.pth'),
+        weights_only=False,
+        map_location=lambda storage,
+        loc: storage
+    )
+except FileNotFoundError:
+    # this is for Jupyter notebook
+    mdl = '../model'
+    ckpt = torch.load(
+        os.path.join(mdl, 'model.pth'),
+        weights_only=False,
+        map_location=lambda storage,
+        loc: storage
+    )
+
 config = os.path.join(mdl, 'config.json')
 with open(config, 'r') as f:
     config_dict = json.load(f)
@@ -56,14 +67,21 @@ model = ResNet1d(
 model.load_state_dict(ckpt["model"])
 model = model.to(device)
 
+is_notebook = False
 
 def get_exam_ids_per_file():
     """
-    Returns file_path to read and filtered dataframe according to filters
+    Returns file_path to read - the path will change according to file_num - hfd5 file
+    and filtered dataframe according to filters
     """
 
     # Read the metadata file
-    df = pd.read_csv(f"{DATA_INPUT_DIR}/exams.csv")
+    try:
+        df = pd.read_csv(f"{DATA_INPUT_DIR}/exams.csv")
+    except FileNotFoundError:
+        # temporary fix for notebook
+        is_notebook = True
+        df = pd.read_csv(f"../{DATA_INPUT_DIR}/exams.csv")
 
     # Keep only the ones that have normal ECG and the absolute
     # difference between their chronological and predicted age < ABS_AGE_DIFF
@@ -78,7 +96,12 @@ def get_exam_ids_per_file():
 
     logging.info(f"Found {len(df)} patients in file num {FILE_NUM}.")
     trace_file_name = f"exams_part{FILE_NUM}.hdf5"
-    trace_file_path = f"{DATA_INPUT_DIR}/{trace_file_name}"
+    if not is_notebook:
+        trace_file_path = f"{DATA_INPUT_DIR}/{trace_file_name}"
+    else:
+        # current fix for using notebooks
+        trace_file_path = f"../{DATA_INPUT_DIR}/{trace_file_name}"
+
     return trace_file_path, df[df['trace_file'] == trace_file_name]
 
 
