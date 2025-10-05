@@ -163,22 +163,41 @@ def reconstruct_traces(
         traces,
         df_metadata,
         model,
+        recon_ages=[age for age in range(20, 81)]
 ):
-    assert (len(traces) == len(df_metadata)), \
-        "Lengths of traces and metadata do not match."
+    if traces.ndim == 3:
+        assert (len(traces) == len(df_metadata)), \
+            "Lengths of traces and metadata do not match."
+    if traces.ndim == 2:
+        assert(len(df_metadata) == 1), \
+            "Too many patients in the metadata dataframe"
     ids_popln = df_metadata[EXAM_ID].values
     real_ages = df_metadata['age'].values
 
-    recon_ages = [age for age in range(20, 81)]
+    # recon_ages = [age for age in range(20, 81)]
 
-    for i, exam_id in enumerate(ids_popln):
+    # If passing multiple patients save numpy files, one file per patient
+    if traces.ndim == 3:
+        for i, exam_id in enumerate(ids_popln):
+            recon_trace = predict(
+                model,
+                traces[i, :, :],
+                recon_ages,
+            )
+            recon_file_path = f"{DATA_OUTPUT_DIR}/id_{exam_id}_age_{real_ages[i]}_recon.npy"
+            np.save(recon_file_path, recon_trace)
+
+    # If passing one patient, return numpy array of reconstructed traces
+    if traces.ndim == 2:
         recon_trace = predict(
             model,
-            traces[i, :, :],
+            traces,
             recon_ages,
         )
-        recon_file_path = f"{DATA_OUTPUT_DIR}/id_{exam_id}_age_{real_ages[i]}_recon.npy"
-        np.save(recon_file_path, recon_trace)
+        # recon_trace should be only 2-dim array if only one recon_age is passed
+        if len(recon_ages) == 1:
+            recon_trace = recon_trace[0, :, :]
+        return recon_trace
 
 
 if __name__ == "__main__":

@@ -61,18 +61,26 @@ class ResBlock1d(nn.Module):
         else:
             y = y
         # 1st layer
+
+        print (f"ResBlock1d input: {x.shape}")
         x = self.conv1(x)
+        print (f"ResBlock1d after conv1: {x.shape}")
         x = self.bn1(x)
         x = self.relu(x)
+        print (f"ResBlock1d after relu: {x.shape}")
         x = self.dropout1(x)
+        print (f"ResBlock1d after dropout: {x.shape}")
 
         # 2nd layer
         x = self.conv2(x)
+        print (f"ResBlock1d after conv2: {x.shape}")
         x += y  # Sum skip connection and main connection
         y = x
         x = self.bn2(x)
         x = self.relu(x)
         x = self.dropout2(x)
+        print (f"ResBlock1d return: {x.shape}")
+
         return x, y
 
 
@@ -105,11 +113,18 @@ class ResNet1d(nn.Module):
         super(ResNet1d, self).__init__()
         # First layers
         n_filters_in, n_filters_out = input_dim[0], blocks_dim[0][0]
+        print (f"n_filters_in: {n_filters_in}")
+        print (f"n_filters_out: {n_filters_out}")
         n_samples_in, n_samples_out = input_dim[1], blocks_dim[0][1]
+        print (f"n_samples_in: {n_samples_in}")
+        print (f"n_samples_out: {n_samples_out}")
         downsample = _downsample(n_samples_in, n_samples_out)
+        print (f"downsample: {downsample}")
         padding = _padding(downsample, kernel_size)
+        print (f"padding: {padding}")
         self.conv1 = nn.Conv1d(n_filters_in, n_filters_out, kernel_size, bias=False,
                                stride=downsample, padding=padding)
+        print (f"self.conv1: {type(self.conv1)}")
         self.bn1 = nn.BatchNorm1d(n_filters_out)
 
         # Residual block layers
@@ -131,8 +146,11 @@ class ResNet1d(nn.Module):
     def forward(self, x):
         """Implement ResNet1d forward propagation"""
         # First layers
+        print(f"start: {x.shape}")
         x = self.conv1(x)
+        print(f"After conv1d: {x.shape}")
         x = self.bn1(x)
+        print(f"bn1: {x.shape}")
 
         # Residual blocks
         y = x
@@ -141,7 +159,9 @@ class ResNet1d(nn.Module):
 
         # Flatten array
         x = x.view(x.size(0), -1)
+        print(f"x.view: {x.shape}")
 
         # Fully conected layer
         x = self.lin(x)
+        print(f"lin: {x.shape}")
         return x
