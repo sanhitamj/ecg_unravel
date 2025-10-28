@@ -2,13 +2,22 @@
 
 * Use `environment.yml` for the setup.
 * Download the metadata (exams.csv) and any data file from https://zenodo.org/records/4916206
-* Save the files downloaded from zenodo in `DATA_INPUT_DIR`
+* Create the directory `data` in the same directory as the repo - `mkdir data`
+* Save the files downloaded from zenodo in directory `data`.
 * Download the model weights:
 ```bash
   wget https://www.dropbox.com/s/thvqwaryeo8uemo/model.zip?dl=0 -O model.zip
   unzip model.zip
 ```
 This will create a directory `model` and will save file `model.pth`
+* To run the predictions, run the command:
+
+`python evaluate.py model {data/exams_part16.hdf5}`
+
+If you have downloaded another file number from Zenodo, second step above, use that file name here.
+
+### Ignore the following steps for now.
+
 * Edit `constants.py`
   * As it is, the output will be a lot of files. Add a constrain `AGE_FILTER = 42`, for example,
   to run the reconstruction for only those with age 42 years.
