@@ -53,9 +53,6 @@ with h5py.File(filename, "r") as f:
     data_array = f['tracings'][()]
     exam_ids = f['exam_id'][()]
 
-# Limit the number of observations we use and transpose the second and third dimesions.
-# This transposition can probably be done better.
-
 
 n_total = 1000  # total number of predictions
 batch_size = 10
@@ -90,5 +87,3 @@ plt.xlabel('NN Predicted Age')
 plt.ylabel('Torch Predicted Age')
 plt.savefig("plot.png")
 plt.show()
-
-
