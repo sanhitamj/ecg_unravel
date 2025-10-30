@@ -30,25 +30,36 @@ if __name__ == "__main__":
     if unk:
         warn("Unknown arguments:" + str(unk) + ".")
     device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    # Get checkpoint
-    ckpt = torch.load(
-        os.path.join(args.mdl, 'model.pth'),
-        map_location=lambda storage, loc: storage,
-        weights_only=False,
-    )
     # Get config
     config = os.path.join(args.mdl, 'config.json')
     with open(config, 'r') as f:
         config_dict = json.load(f)
     # Get model
     N_LEADS = 12
-    model = ResNet1d(input_dim=(N_LEADS, config_dict['seq_length']),
-                     blocks_dim=list(zip(config_dict['net_filter_size'], config_dict['net_seq_lengh'])),
-                     n_classes=1,
-                     kernel_size=config_dict['kernel_size'],
-                     dropout_rate=config_dict['dropout_rate'])
-    # load model checkpoint
-    model.load_state_dict(ckpt["model"])
+    model = ResNet1d(
+        input_dim=(N_LEADS, config_dict['seq_length']),
+        blocks_dim=list(zip(config_dict['net_filter_size'], config_dict['net_seq_lengh'])),
+        n_classes=1,
+        kernel_size=config_dict['kernel_size'],
+        dropout_rate=config_dict['dropout_rate']
+    )
+    state_dict = (torch.load(
+        './model/model.pth',
+        weights_only=False,
+        map_location=torch.device('cpu'))
+    )
+    model.load_state_dict(state_dict['model'])
+    model.eval()
+
+    # Get checkpoint
+    # ckpt = torch.load(
+    #     os.path.join(args.mdl, 'model.pth'),
+    #     map_location=lambda storage, loc: storage,
+    #     weights_only=False,
+    # )
+
+    # # load model checkpoint
+    # model.load_state_dict(ckpt["model"])
     model = model.to(device)
     # Get traces
     ff = h5py.File(args.path_to_traces, 'r')
