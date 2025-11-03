@@ -3,6 +3,7 @@
 import h5py
 import json
 import logging
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
@@ -20,7 +21,7 @@ from constants import (
     SAVE_HDF5,
 )
 
-from evaluate import predict
+from evaluate_script import predict
 from resnet import ResNet1d
 
 logging.basicConfig(
@@ -29,6 +30,9 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S'
 )
 
+# Create the output directory if doesn't exist
+p = Path(DATA_OUTPUT_DIR)
+p.mkdir(parents=True, exist_ok=True)
 
 # setting up the model
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -103,10 +107,6 @@ def extract_selected_tracings(
             assert (len(selected_traces) == len(ids_popln)), \
                 "The lengths of the arrays, indices and traces, do not match."
 
-            p = Path(DATA_OUTPUT_DIR)
-            # Create a directory if doesn't exist
-            p.mkdir(parents=True, exist_ok=True)
-
             npy_path = f"{DATA_OUTPUT_DIR}/p{FILE_NUM}_age_diff_{ABS_AGE_DIFF}_orig.npy"
             if AGE_FILTER:
                 npy_path = npy_path.replace("_orig.npy", f"_age_{AGE_FILTER}_orig.npy")
@@ -144,6 +144,7 @@ def reconstruct_traces(
     assert (len(traces) == len(df_metadata)), \
         "Lengths of traces and metadata do not match."
     ids_popln = df_metadata[EXAM_ID].values
+    nn_predicted_age = df_metadata['nn_predicted_age'].values
     real_ages = df_metadata['age'].values
 
     recon_ages = [age for age in range(20, 81)]
@@ -159,10 +160,27 @@ def reconstruct_traces(
 
 
 if __name__ == "__main__":
+
     trace_file_path, df = get_exam_ids_per_file()
-    df.to_csv(f"{DATA_OUTPUT_DIR}/exams_metadata.csv", index=False)
     selected_traces = extract_selected_tracings(
         trace_file_path,
-        df[EXAM_ID]
+        df['exam_id']
     )
-    reconstruct_traces(selected_traces, df, model)
+    torch_pred = predict(selected_traces)
+    print (len(df), len(torch_pred))
+
+    df.loc[:, 'torch_pred'] = torch_pred
+    # compare = df.merge(torch_pred, on='exam_id', how='inner')
+
+    logging.info("plotting")
+    print(df.head())
+
+    # Plot the new predictions against the metadata predictions
+    plt.scatter(df['nn_predicted_age'], df['torch_pred'])
+    plt.xlabel('NN Predicted Age')
+    plt.ylabel('Torch Predicted Age')
+    plt.savefig("plot.png")
+    plt.show()
+
+
+    # reconstruct_traces(selected_traces, df, model)

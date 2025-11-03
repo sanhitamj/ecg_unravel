@@ -73,6 +73,10 @@ for i in tqdm.tqdm(range(n_batches)):
     # Merge predictions back onto the metadata frame
     preds = pd.DataFrame({'exam_id': exam_ids[start:end],
                         'torch_pred': y_pred.detach().numpy().squeeze()})
+
+    if i == 0:
+        print(y_pred.detach().numpy().squeeze())
+
     predicted_age[start:end] = y_pred.detach().cpu().numpy().flatten()
     pred_list.append(preds)
 

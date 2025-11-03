@@ -10,9 +10,6 @@ NORMAL_ECG = True
 
 AGE_FILTER = False  # using patients with this chronological age.
 
-KEEP_AGE = False  # if True, recon ECG will be for the reported chronological age.
-# if False, recon ECGs will be for [x for x in range(20, 81)]
-
 DATA_OUTPUT_DIR = f'output/p{FILE_NUM}'  # where reconstrctured ECG files would be saved.
 
 PREDICTED_AGE_CSV = f'{DATA_OUTPUT_DIR}/prediction.csv'
