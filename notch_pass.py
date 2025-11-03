@@ -64,7 +64,6 @@ data_array_trans = np.zeros_like(data_array[:n_total, :, :])
 
 mse = []
 for freq in range(2, 500):
-    print(freq)
     notch_freq = freq  # Frequency to be removed from signal (Hz)
     b_notch, a_notch = signal.iirnotch(notch_freq, quality_factor, samp_freq)
     for i in range(n_total):
