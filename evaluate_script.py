@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 
 from constants import (
     DATA_INPUT_DIR,
+    DATA_OUTPUT_DIR,
     N_LEADS,
 )
 config = './model/config.json'
@@ -38,56 +39,89 @@ state_dict = (torch.load('./model/model.pth',
 model.load_state_dict(state_dict['model'])
 model.eval()
 
-# Read in exam metadata and limit to file 16.
-df = pd.read_csv(f'./{DATA_INPUT_DIR}/exams.csv')
-df = df[df['trace_file'] == 'exams_part16.hdf5']
-
-# Read in raw ECG data for file 16.
-filename = "./data/exams_part16.hdf5"
-
-with h5py.File(filename, "r") as f:
-    print("Keys in the HDF5 file:", list(f.keys()))
-    dataset = f['tracings']
-    print("Dataset shape:", dataset.shape)
-    print("Dataset dtype:", dataset.dtype)
-    data_array = f['tracings'][()]
-    exam_ids = f['exam_id'][()]
 
 
-n_total = 1000  # total number of predictions
-batch_size = 10
-n_batches = int(np.ceil(n_total/batch_size))
+def predict(
+        data_array,
+        df,
+        n_total=0,
+        batch_size=10,
+):
+    if n_total == 0:
+        n_total = len(data_array)
+    n_batches = int(np.ceil(n_total/batch_size))
 
-pred_list = []
-predicted_age = np.zeros((n_total,))
-end = 0
-for i in tqdm.tqdm(range(n_batches)):
-    start = end
-    end = min((i + 1) * batch_size, n_total)
+    pred_list = []
+    predicted_age = np.zeros((n_total,))
+    end = 0
+    for i in tqdm.tqdm(range(n_batches)):
+        start = end
+        end = min((i + 1) * batch_size, n_total)
 
-    # Get the predictions
+        # Get the predictions
 
-    model.zero_grad()
-    y_pred = model(torch.tensor(data_array[start:end, :, :]).transpose(-1, -2))
+        model.zero_grad()
+        y_pred = model(torch.tensor(data_array[start:end, :, :]).transpose(-1, -2))
 
-    # Merge predictions back onto the metadata frame
-    preds = pd.DataFrame({'exam_id': exam_ids[start:end],
-                        'torch_pred': y_pred.detach().numpy().squeeze()})
+        # # Merge predictions back onto the metadata frame
+        preds = pd.DataFrame({'exam_id': exam_ids[start:end],
+                            'torch_pred': y_pred.detach().numpy().squeeze()})
 
-    if i == 0:
-        print(y_pred.detach().numpy().squeeze())
+        if i == 0:
+            print(y_pred.detach().numpy().squeeze())
 
-    predicted_age[start:end] = y_pred.detach().cpu().numpy().flatten()
-    pred_list.append(preds)
+        predicted_age[start:end] = y_pred.detach().cpu().numpy().flatten()
+        pred_list.append(preds)
+    # return predicted_age
+
+    preds = pd.concat(pred_list, axis=0, ignore_index=True)
+    compare = df.merge(preds, on='exam_id', how='inner')
 
 
-preds = pd.concat(pred_list, axis=0, ignore_index=True)
-compare = df.merge(preds, on='exam_id', how='inner')
+    # Plot the new predictions against the metadata predictions
+    plt.scatter(compare['nn_predicted_age'], compare['torch_pred'])
+    plt.xlabel('NN Predicted Age')
+    plt.ylabel('Torch Predicted Age')
+    plt.savefig("plot.png")
+    plt.show()
 
 
-# Plot the new predictions against the metadata predictions
-plt.scatter(compare['nn_predicted_age'], compare['torch_pred'])
-plt.xlabel('NN Predicted Age')
-plt.ylabel('Torch Predicted Age')
-plt.savefig("plot.png")
-plt.show()
+if __name__ == "__main__":
+
+    # Read in exam metadata and limit to file 16.
+    df = pd.read_csv(f'./{DATA_INPUT_DIR}/exams.csv')
+    df = df[df['trace_file'] == 'exams_part16.hdf5']
+
+    n_total = 0
+    # Read in raw ECG data for file 16.
+    filename = "./data/exams_part16.hdf5"
+
+    with h5py.File(filename, "r") as f:
+        print("Keys in the HDF5 file:", list(f.keys()))
+        dataset = f['tracings']
+        print("Dataset shape:", dataset.shape)
+        print("Dataset dtype:", dataset.dtype)
+        print("Dataset type:", type(dataset))
+        data_array = f['tracings'][()]
+        exam_ids = f['exam_id'][:]
+
+    if n_total == 0:
+        df = df[
+            (abs(df['nn_predicted_age'] - df['age']) < 1) &
+            (df['normal_ecg'])
+        ].copy()
+        # Find indices of desired exam_ids
+        mask = np.isin(exam_ids, df['exam_id'].values)
+        print(mask)
+        print(type(mask))
+        print(len(mask))
+        indices = np.where(mask)[0]
+
+        # Now read only the matching tracings
+        data_array = dataset[indices]  # shape: (len(indices), ...)
+        print("data_array.shape:", data_array.shape)
+        print("data_array.type:", type(data_array))
+
+
+    # data_array = np.load(f"{DATA_OUTPUT_DIR}/p16/")
+    predict(data_array, df, n_total=n_total, batch_size=10)

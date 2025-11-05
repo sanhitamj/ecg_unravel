@@ -59,7 +59,8 @@ model = ResNet1d(
 # load model checkpoint
 model.load_state_dict(ckpt["model"])
 model = model.to(device)
-
+use_filters=False
+n_total = 772
 
 def get_exam_ids_per_file():
     """
@@ -68,22 +69,29 @@ def get_exam_ids_per_file():
 
     # Read the metadata file
     df = pd.read_csv(f"{DATA_INPUT_DIR}/exams.csv")
+    trace_file_name = f"exams_part{FILE_NUM}.hdf5"
 
     # Keep only the ones that have normal ECG and the absolute
     # difference between their chronological and predicted age < ABS_AGE_DIFF
-    df = df[
-        (abs(df['age'] - df['nn_predicted_age']) < ABS_AGE_DIFF) &
-        (df['normal_ecg'])
-    ].copy()
+    if use_filters:
+        df = df[
+            (df['trace_file'] == trace_file_name) &
+            (abs(df['age'] - df['nn_predicted_age']) < ABS_AGE_DIFF) &
+            (df['normal_ecg'])
+        ].copy()
+    else:
+        df = df[
+            (df['trace_file'] == trace_file_name)
+        ].head(n_total)
+    logging.info(f"Shape of the metadata: {df.shape}")
 
-    # if AGE_FILTER, use only those that have that chronological age
-    if AGE_FILTER:
-        df = df[df['age'] == AGE_FILTER].copy()
+    # # if AGE_FILTER, use only those that have that chronological age
+    # if AGE_FILTER:
+    #     df = df[df['age'] == AGE_FILTER].copy()
 
     logging.info(f"Found {len(df)} patients in file num {FILE_NUM}.")
-    trace_file_name = f"exams_part{FILE_NUM}.hdf5"
     trace_file_path = f"{DATA_INPUT_DIR}/{trace_file_name}"
-    return trace_file_path, df[df['trace_file'] == trace_file_name]
+    return trace_file_path, df
 
 
 def extract_selected_tracings(
@@ -98,15 +106,18 @@ def extract_selected_tracings(
             exam_ids = f[EXAM_ID][:]  # shape: (N,)
             tracings = f['tracings']  # don't load this yet; big dataset
 
-            # Find indices of desired exam_ids
-            mask = np.isin(exam_ids, ids_popln)
-            indices = np.where(mask)[0]
+            if use_filters:
+                # Find indices of desired exam_ids
+                mask = np.isin(exam_ids, ids_popln)
+                indices = np.where(mask)[0]
 
-            # Now read only the matching tracings
-            selected_traces = tracings[indices]  # shape: (len(indices), ...)
-            assert (len(selected_traces) == len(ids_popln)), \
-                "The lengths of the arrays, indices and traces, do not match."
+                # Now read only the matching tracings
+                selected_traces = tracings[indices]  # shape: (len(indices), ...)
+                assert (len(selected_traces) == len(ids_popln)), \
+                    "The lengths of the arrays, indices and traces, do not match."
 
+            else:
+                selected_traces = tracings[:n_total]
             npy_path = f"{DATA_OUTPUT_DIR}/p{FILE_NUM}_age_diff_{ABS_AGE_DIFF}_orig.npy"
             if AGE_FILTER:
                 npy_path = npy_path.replace("_orig.npy", f"_age_{AGE_FILTER}_orig.npy")
@@ -155,8 +166,8 @@ def reconstruct_traces(
             traces[i, :, :],
             recon_ages,
         )
-        recon_file_path = f"{DATA_OUTPUT_DIR}/id_{exam_id}_age_{real_ages[i]}_recon.npy"
-        np.save(recon_file_path, recon_trace)
+    recon_file_path = f"{DATA_OUTPUT_DIR}/id_{exam_id}_age_{real_ages[i]}_recon.npy"
+    np.save(recon_file_path, recon_trace)
 
 
 if __name__ == "__main__":
@@ -173,7 +184,7 @@ if __name__ == "__main__":
     # compare = df.merge(torch_pred, on='exam_id', how='inner')
 
     logging.info("plotting")
-    print(df.head())
+    print(df[['nn_predicted_age', 'torch_pred']].head())
 
     # Plot the new predictions against the metadata predictions
     plt.scatter(df['nn_predicted_age'], df['torch_pred'])
