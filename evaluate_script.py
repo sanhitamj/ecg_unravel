@@ -44,6 +44,7 @@ model.eval()
 def predict(
         data_array,
         df,
+        exam_ids,
         n_total=0,
         batch_size=10,
 ):
@@ -102,6 +103,12 @@ if __name__ == "__main__":
         data_array = f['tracings'][()]
         exam_ids = f['exam_id'][()]
 
+    # Brute force sort df to match exam_ids
+    out_df = []
+    for i in range(df.shape[0]):
+        out_df.append(df.loc[df['exam_id'] == exam_ids[i]])
+    df = pd.concat(out_df)
+
     if n_total == 0:
         df_ = df[
             (abs(df['nn_predicted_age'] - df['age']) < 1) &
@@ -116,11 +123,10 @@ if __name__ == "__main__":
         df.to_csv("mask.csv", index=False)
 
         # Now read only the matching tracings
-        data_array = data_array[mask]  # shape: (len(indices), ...)
+        data_array = data_array[mask, :, :]  # shape: (len(indices), ...)
         print("data_array.shape:", data_array.shape)
         print("data_array.type:", type(data_array))
         n_total = mask.sum()
 
-
     # data_array = np.load(f"{DATA_OUTPUT_DIR}/p16/")
-    predict(data_array, df_, n_total=n_total, batch_size=20)
+    predict(data_array, df_, exam_ids[mask], n_total=n_total, batch_size=20)
