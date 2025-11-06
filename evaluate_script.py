@@ -98,30 +98,29 @@ if __name__ == "__main__":
 
     with h5py.File(filename, "r") as f:
         print("Keys in the HDF5 file:", list(f.keys()))
-        dataset = f['tracings']
-        print("Dataset shape:", dataset.shape)
-        print("Dataset dtype:", dataset.dtype)
-        print("Dataset type:", type(dataset))
+        # dataset = f['tracings']
         data_array = f['tracings'][()]
-        exam_ids = f['exam_id'][:]
+        exam_ids = f['exam_id'][()]
 
     if n_total == 0:
-        df = df[
+        df_ = df[
             (abs(df['nn_predicted_age'] - df['age']) < 1) &
             (df['normal_ecg'])
         ].copy()
+        print(df_[['nn_predicted_age']].head())
+
         # Find indices of desired exam_ids
-        mask = np.isin(exam_ids, df['exam_id'].values)
-        print(mask)
-        print(type(mask))
-        print(len(mask))
-        indices = np.where(mask)[0]
+        mask = np.isin(exam_ids, df_['exam_id'].values)
+        print ("lenghts of mask and df:", len(mask), mask.sum(), len(df))
+        df.loc[:, 'mask'] = mask[:-1]
+        df.to_csv("mask.csv", index=False)
 
         # Now read only the matching tracings
-        data_array = dataset[indices]  # shape: (len(indices), ...)
+        data_array = data_array[mask]  # shape: (len(indices), ...)
         print("data_array.shape:", data_array.shape)
         print("data_array.type:", type(data_array))
+        n_total = mask.sum()
 
 
     # data_array = np.load(f"{DATA_OUTPUT_DIR}/p16/")
-    predict(data_array, df, n_total=n_total, batch_size=10)
+    predict(data_array, df_, n_total=n_total, batch_size=20)
