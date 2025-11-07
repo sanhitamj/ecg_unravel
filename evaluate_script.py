@@ -1,18 +1,14 @@
-from resnet import ResNet1d
-import tqdm
 import h5py
-import torch
-import os
 import json
-import numpy as np
-from warnings import warn
-import pandas as pd
-
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import torch
+import tqdm
 
+from resnet import ResNet1d
 from constants import (
     DATA_INPUT_DIR,
-    DATA_OUTPUT_DIR,
     N_LEADS,
 )
 config = './model/config.json'
@@ -40,7 +36,6 @@ model.load_state_dict(state_dict['model'])
 model.eval()
 
 
-
 def predict(
         data_array,
         df,
@@ -65,8 +60,10 @@ def predict(
         y_pred = model(torch.tensor(data_array[start:end, :, :]).transpose(-1, -2))
 
         # # Merge predictions back onto the metadata frame
-        preds = pd.DataFrame({'exam_id': exam_ids[start:end],
-                            'torch_pred': y_pred.detach().numpy().squeeze()})
+        preds = pd.DataFrame({
+            'exam_id': exam_ids[start:end],
+            'torch_pred': y_pred.detach().numpy().squeeze()
+        })
 
         if i == 0:
             print(y_pred.detach().numpy().squeeze())
@@ -77,7 +74,6 @@ def predict(
 
     preds = pd.concat(pred_list, axis=0, ignore_index=True)
     compare = df.merge(preds, on='exam_id', how='inner')
-
 
     # Plot the new predictions against the metadata predictions
     plt.scatter(compare['nn_predicted_age'], compare['torch_pred'])
@@ -99,7 +95,6 @@ if __name__ == "__main__":
 
     with h5py.File(filename, "r") as f:
         print("Keys in the HDF5 file:", list(f.keys()))
-        # dataset = f['tracings']
         data_array = f['tracings'][()]
         exam_ids = f['exam_id'][()]
 
@@ -110,23 +105,18 @@ if __name__ == "__main__":
     df = pd.concat(out_df)
 
     if n_total == 0:
-        df_ = df[
+        df = df[
             (abs(df['nn_predicted_age'] - df['age']) < 1) &
             (df['normal_ecg'])
         ].copy()
-        print(df_[['nn_predicted_age']].head())
+        print(df[['nn_predicted_age']].head())
 
         # Find indices of desired exam_ids
-        mask = np.isin(exam_ids, df_['exam_id'].values)
-        print ("lenghts of mask and df:", len(mask), mask.sum(), len(df))
-        df.loc[:, 'mask'] = mask[:-1]
-        df.to_csv("mask.csv", index=False)
+        mask = np.isin(exam_ids, df['exam_id'].values)
+        exam_ids = exam_ids[mask]
 
         # Now read only the matching tracings
         data_array = data_array[mask, :, :]  # shape: (len(indices), ...)
-        print("data_array.shape:", data_array.shape)
-        print("data_array.type:", type(data_array))
         n_total = mask.sum()
 
-    # data_array = np.load(f"{DATA_OUTPUT_DIR}/p16/")
-    predict(data_array, df_, exam_ids[mask], n_total=n_total, batch_size=20)
+    predict(data_array, df, exam_ids, n_total=n_total, batch_size=20)
