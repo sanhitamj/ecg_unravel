@@ -62,29 +62,25 @@ def predict(
         # Get the predictions
 
         model.zero_grad()
-        if not reconstruct:
-            X = torch.tensor(data_array[start:end, :, :]).transpose(-1, -2)
-            y_pred = model(X)
+        X = torch.tensor(
+            data_array[start:end, :, :],
+            requires_grad=reconstruct  # need this to retreive ECGs after backprop
+        ).transpose(-1, -2)
+        y_pred = model(X)
         if reconstruct:
-            # X.retain_grad = True
-            X = torch.tensor(data_array[start:end, :, :], requires_grad=True).transpose(-1, -2)
+            # X = torch.tensor(data_array[start:end, :, :], requires_grad=True).transpose(-1, -2)
             X.retain_grad()
             y_pred = model(X)
 
             ages = torch.from_numpy(df['age'][start:end].values)
-            optimizer = optim.Adam(model.parameters(), config_dict["lr"])
             weights = torch.from_numpy(compute_weights(ages))
             loss = compute_loss(
                 ages, y_pred, weights
             )
-            print("loss: ", loss)
-
             loss.backward()
-            optimizer.step()
-
             reconstructed_traces.append(X.grad.detach().cpu().transpose(-1, -2).numpy().astype(np.float32))
 
-        # # Merge predictions back onto the metadata frame
+        # Merge predictions back onto the metadata frame
         preds = pd.DataFrame({
             'exam_id': exam_ids[start:end],
             'torch_pred': y_pred.detach().numpy().squeeze()
@@ -152,7 +148,7 @@ def main(n_total=0):
 
 
 if __name__ == "__main__":
-    n_total = 20  # to use filters; use a positive number to use first n
+    n_total = 0  # to use filters; use a positive number to use first n
     batch_size = 20
     data_array, df, exam_ids = main(n_total=n_total)
     predict(data_array, df, exam_ids, reconstruct=True, n_total=n_total, batch_size=batch_size)
