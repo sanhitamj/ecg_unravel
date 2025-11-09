@@ -68,7 +68,6 @@ def predict(
         ).transpose(-1, -2)
         y_pred = model(X)
         if reconstruct:
-            # X = torch.tensor(data_array[start:end, :, :], requires_grad=True).transpose(-1, -2)
             X.retain_grad()
             y_pred = model(X)
 
