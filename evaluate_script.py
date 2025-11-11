@@ -123,11 +123,10 @@ def main(n_total=0):
         data_array = f['tracings'][()]
         exam_ids = f['exam_id'][()]
 
-    # Brute force sort df to match exam_ids
-    out_df = []
-    for i in range(df.shape[0]):
-        out_df.append(df.loc[df['exam_id'] == exam_ids[i]])
-    df = pd.concat(out_df)
+    # Sort df to match exam_ids
+    df = df.iloc[[list(exam_ids).index(x)
+                  if x in list(exam_ids) else None 
+                  for x in df['exam_id']]]
 
     if n_total == 0:
         df = df[
