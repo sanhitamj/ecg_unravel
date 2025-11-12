@@ -77,7 +77,9 @@ def predict(
                 ages, y_pred, weights
             )
             loss.backward()
-            reconstructed_traces.append(X.grad.detach().cpu().transpose(-1, -2).numpy().astype(np.float32))
+            reconstructed_traces.append(
+                X.grad.detach().cpu().transpose(-1, -2).numpy().astype(np.float32)
+            )
 
         # Merge predictions back onto the metadata frame
         preds = pd.DataFrame({
@@ -90,7 +92,6 @@ def predict(
 
     preds = pd.concat(pred_list, axis=0, ignore_index=True)
     compare = df.merge(preds, on='exam_id', how='inner')
-    print(compare[['age', 'nn_predicted_age', 'torch_pred']].head())
     if reconstruct:
         recon_traces = np.concatenate(reconstructed_traces, axis=0)
         print(f"recon_traces.shape: {recon_traces.shape}")
@@ -99,7 +100,6 @@ def predict(
         plt.plot(data_array[0, :, 0], label='original')
         plt.legend()
         plt.show()
-
 
     # Plot the new predictions against the metadata predictions
 
@@ -125,7 +125,7 @@ def main(n_total=0):
 
     # Sort df to match exam_ids
     df = df.iloc[[list(exam_ids).index(x)
-                  if x in list(exam_ids) else None 
+                  if x in list(exam_ids) else None
                   for x in df['exam_id']]]
 
     if n_total == 0:
