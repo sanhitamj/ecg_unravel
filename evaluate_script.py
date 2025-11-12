@@ -96,7 +96,7 @@ def predict(
         recon_traces = np.concatenate(reconstructed_traces, axis=0)
         print(f"recon_traces.shape: {recon_traces.shape}")
         np.save("reconstructed_traces.npy", recon_traces)
-        plt.plot(recon_traces[0, :, 0], label='Reconstructed?')
+        plt.plot(recon_traces[0, :, 0], label='Reconstructed')
         plt.plot(data_array[0, :, 0], label='original')
         plt.legend()
         plt.show()
@@ -110,7 +110,7 @@ def predict(
     plt.show()
 
 
-def main(n_total=0):
+def main(n_total=100):
     # Read in exam metadata and limit to file 16.
     df = pd.read_csv(f'./{DATA_INPUT_DIR}/exams.csv')
     df = df[df['trace_file'] == 'exams_part16.hdf5']
@@ -146,7 +146,7 @@ def main(n_total=0):
 
 
 if __name__ == "__main__":
-    n_total = 0  # to use filters; use a positive number to use first n
+    n_total = 100  # to use filters; use a positive number to use first n
     batch_size = 20
     data_array, df, exam_ids = main(n_total=n_total)
     predict(data_array, df, exam_ids, reconstruct=True, n_total=n_total, batch_size=batch_size)
