@@ -1,20 +1,24 @@
-from resnet import ResNet1d
-import tqdm
 import h5py
-import torch
-import os
 import json
-import numpy as np
-from warnings import warn
-import pandas as pd
-
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import torch
+import tqdm
 
 from constants import (
-    DATA_INPUT_DIR,
+    ABS_AGE_DIFF,
+    DATA_DIR,
+    MODEL_DIR,
     N_LEADS,
+    N_TOTAL,
+    RECONSTRUCT,
+    RECONSTRUCT_FILE,
 )
-config = './model/config.json'
+from resnet import ResNet1d
+from train import compute_loss, compute_weights
+
+config = f'{MODEL_DIR}/config.json'
 
 # Instantiate the model using the config.json information.
 with open(config, 'r') as f:
@@ -30,7 +34,7 @@ model = ResNet1d(
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 # Retrieve the state dict, which has all the coefficients
-state_dict = (torch.load('./model/model.pth',
+state_dict = (torch.load(f'{MODEL_DIR}/model.pth',
               weights_only=False,
               map_location=device))
 
@@ -38,52 +42,123 @@ state_dict = (torch.load('./model/model.pth',
 model.load_state_dict(state_dict['model'])
 model.eval()
 
-# Read in exam metadata and limit to file 16.
-df = pd.read_csv(f'./{DATA_INPUT_DIR}/exams.csv')
-df = df[df['trace_file'] == 'exams_part16.hdf5']
 
-# Read in raw ECG data for file 16.
-filename = "./data/exams_part16.hdf5"
+def predict(
+        data_array,
+        df,
+        exam_ids,
+        reconstruct=False,
+        batch_size=10,
+):
+    n_total = N_TOTAL
+    if n_total == 0:
+        n_total = len(data_array)
+    n_batches = int(np.ceil(n_total/batch_size))
 
-with h5py.File(filename, "r") as f:
-    print("Keys in the HDF5 file:", list(f.keys()))
-    dataset = f['tracings']
-    print("Dataset shape:", dataset.shape)
-    print("Dataset dtype:", dataset.dtype)
-    data_array = f['tracings'][()]
-    exam_ids = f['exam_id'][()]
+    pred_list = []
+    predicted_age = np.zeros((n_total,))
+    end = 0
+    reconstructed_traces = []
+    for i in tqdm.tqdm(range(n_batches)):
+        start = end
+        end = min((i + 1) * batch_size, n_total)
+
+        # Get the predictions
+
+        model.zero_grad()
+        X = torch.tensor(
+            data_array[start:end, :, :],
+            requires_grad=reconstruct  # need this to retreive ECGs after backprop
+        ).transpose(-1, -2)
+        y_pred = model(X)
+        if reconstruct:
+            X.retain_grad()
+            y_pred = model(X)
+
+            ages = torch.from_numpy(df['age'][start:end].values)
+            weights = torch.from_numpy(compute_weights(ages))
+            loss = compute_loss(
+                ages, y_pred, weights
+            )
+            loss.backward()
+            reconstructed_traces.append(
+                X.grad.detach().cpu().transpose(-1, -2).numpy().astype(np.float32)
+            )
+
+        # Merge predictions back onto the metadata frame
+        preds = pd.DataFrame({
+            'exam_id': exam_ids[start:end],
+            'torch_pred': y_pred.detach().numpy().squeeze()
+        })
+
+        predicted_age[start:end] = y_pred.detach().cpu().numpy().flatten()
+        pred_list.append(preds)
+
+    preds = pd.concat(pred_list, axis=0, ignore_index=True)
+    preds = df.merge(preds, on='exam_id', how='inner')
+
+    preds.to_csv(f"{DATA_DIR}/prediction.csv", index=False)
+
+    if reconstruct:
+        recon_traces = np.concatenate(reconstructed_traces, axis=0)
+        print(f"recon_traces.shape: {recon_traces.shape}")
+        np.save(RECONSTRUCT_FILE, recon_traces)
+        plt.plot(recon_traces[0, :, 0], label='Reconstructed')
+        plt.plot(data_array[0, :, 0], label='original')
+        plt.legend()
+        plt.show()
+
+    # Plot the new predictions against the metadata predictions
+
+    plt.scatter(preds['nn_predicted_age'], preds['torch_pred'])
+    plt.xlabel('NN Predicted Age')
+    plt.ylabel('Torch Predicted Age')
+    plt.savefig("plot.png")
+    plt.show()
+    return
 
 
-n_total = 1000  # total number of predictions
-batch_size = 10
-n_batches = int(np.ceil(n_total/batch_size))
+def read_data():
+    n_total = N_TOTAL
 
-pred_list = []
-predicted_age = np.zeros((n_total,))
-end = 0
-for i in tqdm.tqdm(range(n_batches)):
-    start = end
-    end = min((i + 1) * batch_size, n_total)
+    # Read in exam metadata and limit to file 16.
+    df = pd.read_csv(f'{DATA_DIR}/exams.csv')
+    df = df[df['trace_file'] == 'exams_part16.hdf5']
 
-    # Get the predictions
+    # Read in raw ECG data for file 16.
+    filename = f"{DATA_DIR}/exams_part16.hdf5"
 
-    model.zero_grad()
-    y_pred = model(torch.tensor(data_array[start:end, :, :]).transpose(-1, -2))
+    with h5py.File(filename, "r") as f:
+        print("Keys in the HDF5 file:", list(f.keys()))
+        data_array = f['tracings'][()]
+        exam_ids = f['exam_id'][()]
 
-    # Merge predictions back onto the metadata frame
-    preds = pd.DataFrame({'exam_id': exam_ids[start:end],
-                        'torch_pred': y_pred.detach().numpy().squeeze()})
-    predicted_age[start:end] = y_pred.detach().cpu().numpy().flatten()
-    pred_list.append(preds)
+    # Sort df to match exam_ids
+    df = df.iloc[[list(exam_ids).index(x)
+                  if x in list(exam_ids) else None
+                  for x in df['exam_id']]]
+
+    if n_total == 0:
+        df = df[
+            (abs(df['nn_predicted_age'] - df['age']) < ABS_AGE_DIFF) &
+            (df['normal_ecg'])
+        ].copy()
+
+        # Find indices of desired exam_ids
+        mask = np.isin(exam_ids, df['exam_id'].values)
+        exam_ids = exam_ids[mask]
+
+        # Now read only the matching tracings
+        data_array = data_array[mask, :, :]  # shape: (len(indices), ...)
+        n_total = mask.sum()
+
+    else:
+        data_array = data_array[:n_total]
+
+    return data_array, df, exam_ids
 
 
-preds = pd.concat(pred_list, axis=0, ignore_index=True)
-compare = df.merge(preds, on='exam_id', how='inner')
-
-
-# Plot the new predictions against the metadata predictions
-plt.scatter(compare['nn_predicted_age'], compare['torch_pred'])
-plt.xlabel('NN Predicted Age')
-plt.ylabel('Torch Predicted Age')
-plt.savefig("plot.png")
-plt.show()
+if __name__ == "__main__":
+    batch_size = 20
+    data_array, df, exam_ids = read_data()
+    predict(data_array, df, exam_ids, reconstruct=RECONSTRUCT, batch_size=batch_size)

@@ -1,25 +1,18 @@
 # Save the files downloaded from zenodo in `DATA_INPUT_DIR`
-DATA_INPUT_DIR = 'data'
+DATA_DIR = '../data'
+MODEL_DIR = '../model'
 
-FILE_NUM = 16  # the file number to read
+N_LEADS = 12  # 12 channels for ECG
+N_TOTAL = 0  # make this 0 to use filters
+RECONSTRUCT = False  # To create a file with the reconstructed traces
+
+OUTPUT_PREDICTIONS = f'{DATA_DIR}/predictions.csv'
+RECONSTRUCT_FILE = f'{DATA_DIR}/reconstructed_traces.npy'
+
 # using 16 as default - that has the most data with the following 2 constraints:
 # ABS_AGE_DIFF and NORMAL_ECG
 
 ABS_AGE_DIFF = 1  # the absolute difference between chronological and predicted ages
-NORMAL_ECG = True
+# NORMAL_ECG = True
 
-AGE_FILTER = False  # using patients with this chronological age.
-
-KEEP_AGE = False  # if True, recon ECG will be for the reported chronological age.
-# if False, recon ECGs will be for [x for x in range(20, 81)]
-
-DATA_OUTPUT_DIR = f'output/p{FILE_NUM}'  # where reconstrctured ECG files would be saved.
-
-PREDICTED_AGE_CSV = f'{DATA_OUTPUT_DIR}/prediction.csv'
-# saved only if KEEP_AGE = True
-
-batch_size = 8
-traces_dset = 'tracings'  # used in reading hdf5 file.
-N_LEADS = 12  # 12 channels for ECG
-SAVE_HDF5 = False  # use this if working with "a lot of" patients.
-EXAM_ID = 'exam_id'
+# AGE_FILTER = False  # using patients with this chronological age.
