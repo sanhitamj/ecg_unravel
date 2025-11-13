@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
-import torch.optim as optim
 import tqdm
 
 from constants import (
@@ -119,7 +118,7 @@ def predict(
     return
 
 
-def main():
+def read_data():
     n_total = N_TOTAL
 
     # Read in exam metadata and limit to file 16.
@@ -161,5 +160,5 @@ def main():
 
 if __name__ == "__main__":
     batch_size = 20
-    data_array, df, exam_ids = main()
+    data_array, df, exam_ids = read_data()
     predict(data_array, df, exam_ids, reconstruct=RECONSTRUCT, batch_size=batch_size)

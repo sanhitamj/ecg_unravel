@@ -16,4 +16,3 @@ ABS_AGE_DIFF = 1  # the absolute difference between chronological and predicted 
 # NORMAL_ECG = True
 
 # AGE_FILTER = False  # using patients with this chronological age.
-
