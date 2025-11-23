@@ -3,8 +3,8 @@ DATA_DIR = '../data'
 MODEL_DIR = '../model'
 
 N_LEADS = 12  # 12 channels for ECG
-N_TOTAL = 0  # make this 0 to use filters
-RECONSTRUCT = False  # To create a file with the reconstructed traces
+# N_TOTAL = 0  # make this 0 to use filters
+# RECONSTRUCT = False  # To create a file with the reconstructed traces
 
 OUTPUT_PREDICTIONS = f'{DATA_DIR}/predictions.csv'
 RECONSTRUCT_FILE = f'{DATA_DIR}/reconstructed_traces.npy'
