@@ -7,13 +7,10 @@ import torch
 import tqdm
 
 from constants import (
-    ABS_AGE_DIFF,
+    # ABS_AGE_DIFF,
     DATA_DIR,
     MODEL_DIR,
     N_LEADS,
-    N_TOTAL,
-    RECONSTRUCT,
-    RECONSTRUCT_FILE,
 )
 from resnet import ResNet1d
 from train import compute_loss, compute_weights
@@ -49,10 +46,16 @@ def predict(
         exam_ids,
         reconstruct=False,
         batch_size=10,
+        reconstruct_file='reconstruct_16.npy',
 ):
-    n_total = N_TOTAL
-    if n_total == 0:
-        n_total = len(data_array)
+    """
+    data_array: 3-D array with patients and their 2-D ECGs
+    df: metadata or part of it from exams.csv
+    exam_ids: exam_ids for the patients in data_array
+    reconstruct: if True, reconstructed ECGs from the neural net are written
+    batch_size: for prediction
+    """
+    n_total = len(data_array)
     n_batches = int(np.ceil(n_total/batch_size))
 
     pred_list = []
@@ -64,7 +67,6 @@ def predict(
         end = min((i + 1) * batch_size, n_total)
 
         # Get the predictions
-
         model.zero_grad()
         X = torch.tensor(
             data_array[start:end, :, :],
@@ -102,7 +104,7 @@ def predict(
     if reconstruct:
         recon_traces = np.concatenate(reconstructed_traces, axis=0)
         print(f"recon_traces.shape: {recon_traces.shape}")
-        np.save(RECONSTRUCT_FILE, recon_traces)
+        np.save(reconstruct_file, recon_traces)
         plt.plot(recon_traces[0, :, 0], label='Reconstructed')
         plt.plot(data_array[0, :, 0], label='original')
         plt.legend()
@@ -118,8 +120,11 @@ def predict(
     return
 
 
-def read_data():
-    n_total = N_TOTAL
+def read_data(
+        n_total=1000,
+        data_file='trace_file.npy',
+        abs_age_diff=1,
+    ):
 
     # Read in exam metadata and limit to file 16.
     df = pd.read_csv(f'{DATA_DIR}/exams.csv')
@@ -140,7 +145,7 @@ def read_data():
 
     if n_total == 0:
         df = df[
-            (abs(df['nn_predicted_age'] - df['age']) < ABS_AGE_DIFF) &
+            (abs(df['nn_predicted_age'] - df['age']) < abs_age_diff) &
             (df['normal_ecg'])
         ].copy()
 
@@ -155,10 +160,12 @@ def read_data():
     else:
         data_array = data_array[:n_total]
 
+    if data_file:
+        np.save(data_file, data_array)
     return data_array, df, exam_ids
 
 
 if __name__ == "__main__":
     batch_size = 20
-    data_array, df, exam_ids = read_data()
-    predict(data_array, df, exam_ids, reconstruct=RECONSTRUCT, batch_size=batch_size)
+    data_array, df, exam_ids = read_data(n_total=100, data_file='trace_file.npy')
+    predict(data_array, df, exam_ids, reconstruct=False, batch_size=batch_size)
