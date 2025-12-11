@@ -123,8 +123,14 @@ def predict(
 def read_data(
         n_total=1000,
         data_file='trace_file.npy',
-        abs_age_diff=1,
+        abs_age_diff=100,
     ):
+    """
+    Takes in 3 arguments:
+    n_total: either 0 to use filters, or a positive integer
+    data_file: save those selected traces in this file
+    abs_age_diff: to be used in filters; default is 100 to allow all the patients
+    """
 
     # Read in exam metadata and limit to file 16.
     df = pd.read_csv(f'{DATA_DIR}/exams.csv')
