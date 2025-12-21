@@ -1,0 +1,221 @@
+from resnet import ResNet1d
+import h5py
+from itertools import product
+import torch
+import json
+import numpy as np
+import pandas as pd
+from pathlib import Path
+
+from scipy.signal import find_peaks
+from scipy.stats import skew
+
+from constants import (
+    N_LEADS,
+)
+
+
+DATA_DIR = "data"
+model_dir = "model"
+
+peak_prominence_for_detection = 0.75
+# Minimum prominence required to retain a peak
+inter_beat_sd_percentile = 0.90
+# Percentile of standard deviations of inter beat SDs to set a cutoff for retention
+mode_cutoff = 9
+# Minimum number of channels with the same number of peaks required for retention
+hr_low = 50
+# Lowest HR for retention
+hr_high = 120
+# Highest HR for retention
+PEAK_AT = 2048
+# Select subject and channel to pick peaks
+
+config = f'{model_dir}/config.json'
+
+# Instantiate the model using the config.json information.
+with open(config, 'r') as f:
+    config_dict = json.load(f)
+model = ResNet1d(
+    input_dim=(N_LEADS, config_dict['seq_length']),
+    blocks_dim=list(zip(config_dict['net_filter_size'], config_dict['net_seq_lengh'])),
+    n_classes=1,
+    kernel_size=config_dict['kernel_size'],
+    dropout_rate=config_dict['dropout_rate']
+)
+
+device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+
+# Retrieve the state dict, which has all the coefficients
+state_dict = (torch.load(f'{model_dir}/model.pth',
+              weights_only=False,
+              map_location=device))
+
+# Load the state dict and set the model to eval mode.
+model.load_state_dict(state_dict['model'])
+model.eval()
+
+# Read in exam metadata and limit to file 16.
+df = pd.read_csv(f'{DATA_DIR}/exams.csv')
+df = df[df['trace_file'] == 'exams_part16.hdf5']
+
+# Read in raw ECG data for file 16.
+filename = f"{DATA_DIR}/exams_part16.hdf5"
+
+with h5py.File(filename, "r") as f:
+    print("Keys in the HDF5 file:", list(f.keys()))
+    dataset = f['tracings']
+    print("Dataset shape:", dataset.shape)
+    print("Dataset dtype:", dataset.dtype)
+    data_array = f['tracings'][()]
+    exam_ids = f['exam_id'][()]
+
+# For each subject and channel, calculate the number of peaks,
+# the location of peaks,
+# and the standard deviation of the interbeat intervals.
+# This takes about 3 minutes.
+summary_frame = pd.DataFrame(product(range(data_array.shape[0]), range(data_array.shape[2])),
+                             columns=['subject', 'channel'])
+summary_frame['n_peaks'] = np.nan
+peak_list = []
+summary_frame['inter_beat_sd'] = np.nan
+for subject in range(data_array.shape[0]):
+    if (subject + 1) % 1000 == 0:
+        print('Subject ', subject + 1, ' of ', data_array.shape[0] + 1)
+    for channel in range(12):
+        series = data_array[subject, :, channel]
+        if skew(series) < 0:
+            series = -series
+        peaks, _ = find_peaks(series, prominence=(peak_prominence_for_detection, None))
+        n_peaks = len(peaks)
+        inter_beat_sd = np.nan
+        if n_peaks > 2:
+            inter_beat_sd = np.std(np.diff(peaks))
+        mask = (summary_frame['subject'] == subject) & (summary_frame['channel'] == channel)
+        summary_frame.loc[mask, 'n_peaks'] = n_peaks
+        summary_frame.loc[mask, 'inter_beat_sd'] = inter_beat_sd
+        peak_list.append(peaks)
+summary_frame['peaks'] = peak_list
+
+# For each subject, calculate the size of the mode of the number of peaks
+modes = summary_frame.groupby('subject')['n_peaks'].value_counts().reset_index()
+modes = modes.groupby('subject').first().reset_index()
+
+modes.rename(columns={
+    'n_peaks': 'mode_n_peaks',
+    'count': 'mode_count'
+    }, inplace=True)
+summary_frame = summary_frame.merge(modes[['subject', 'mode_n_peaks', 'mode_count']], how='inner', on='subject')
+
+# Add the heart rate from the most common peak count
+temp = summary_frame[summary_frame['n_peaks'] == summary_frame['mode_n_peaks']].copy()
+temp['hr'] = temp['n_peaks'] * 60 / 10
+temp = temp.groupby('subject')['hr'].first().reset_index()
+summary_frame = summary_frame.merge(temp, on='subject', how='left')
+
+# Find the inter_beat_sd_percentile^th percentile of the inter_beat_sd
+inter_beat_sd_cutoff = np.nanquantile(summary_frame['inter_beat_sd'], inter_beat_sd_percentile)
+
+# For each subject, get the average inter beat sd using only the channels
+# where the number of peaks is the mode number of peaks.
+avg_inter_beat_sd = (
+    summary_frame
+    .loc[summary_frame['n_peaks'] == summary_frame['mode_n_peaks']]
+    .groupby('subject')
+    ['inter_beat_sd']
+    .mean()
+    .reset_index()
+)
+avg_inter_beat_sd.rename(columns={'inter_beat_sd': 'avg_inter_beat_sd'}, inplace=True)
+summary_frame = summary_frame.merge(avg_inter_beat_sd, on='subject', how='left')
+
+# Flag subjects to retain if they have at least 9 channels with the same
+# number of beats, an average inter_beat_sd on those channels less than the cutoff,
+# and a heart rate between 50 and 120
+summary_frame['retain_subject'] = (
+    (summary_frame['mode_count'] >= mode_cutoff)
+    & (summary_frame['avg_inter_beat_sd'] < inter_beat_sd_cutoff)
+    & ((summary_frame['hr'] >= hr_low) & (summary_frame['hr'] <= hr_high))
+)
+
+# subject_ids for the hfd5 file
+mask_df = summary_frame.groupby(
+    'subject'
+)['retain_subject'].max().reset_index()
+
+# Assign new IDs associated with the traces to the filtered dataframe
+subject_id_mapping = {}
+for ind, subject_id in zip(
+    mask_df[mask_df['retain_subject']]['subject'].reset_index(drop=True).index,
+    mask_df[mask_df['retain_subject']]['subject'].reset_index(drop=True).values):
+    subject_id_mapping[subject_id] = ind
+
+summary_frame.loc[:, 'new_subject_id'] = summary_frame['subject'].map(subject_id_mapping)
+
+exam_ids = exam_ids[mask_df['retain_subject']]
+data_array = data_array[mask_df['retain_subject'], :, :]
+
+# new array to store only one averaged beat
+one_beat_array = np.empty(data_array.shape)
+
+# create a directory to store one-subject-one-beat-one-file data
+p = Path(f"{DATA_DIR}/one_beat/")
+p.mkdir(parents=True, exist_ok=True)
+
+
+# this is the index for the data_array, traces
+for data_array_index in range(len(data_array)):
+    # list to store all channels for a subject
+    subject_avg_beat = []
+
+    # associated dataframe index:
+    subject = int(summary_frame[summary_frame['new_subject_id'] == data_array_index]['subject'].values[0])
+
+    # The first channel that has the mode number of peaks
+    channel = int(summary_frame[
+        (summary_frame['subject'] == subject) &
+        (summary_frame['n_peaks'] == summary_frame['mode_n_peaks'])
+    ]['channel'].head(1).values[0])
+
+    peaks = summary_frame[
+        (summary_frame['subject'] == subject) &
+        (summary_frame['channel'] == channel)
+    ]['peaks'].values[0]
+    # if isinstance(peaks, str):
+    #     peaks = [int(item) for item in peaks.replace('[', '').replace(']', '').split()]
+
+    # find average length of the heartbeat
+    i = 0
+    beat_length = []
+    while i < len(peaks) - 1:
+        beat_length.append(peaks[1 + i] - peaks[i])
+        i += 1
+    avg_beat_len = np.ceil(np.array(beat_length).mean())
+
+    # just over a 1/3 of the beat to before QRS complex
+    back = int(np.ceil(avg_beat_len * 0.35))
+    # just over 2/3 of the beat to after  QRS complex
+    forward = int(np.ceil(avg_beat_len * 0.70))
+
+    start = PEAK_AT - back
+
+    # average the heartbearts in odane beat per channel
+    # avg_beat = np.empty((int(back + forward), 12))
+    trace = data_array[data_array_index, :, :]
+
+    sample_plot_index = 2
+
+    for chan in range(12):
+        beats = []
+        for peak in peaks:
+            if peak - back >= 0 and peak + forward < 4096:
+                one_beat = trace[int(peak - back):int(peak + forward), chan]
+                # if one_beat.shape == back + forward:
+                beats.append(one_beat)
+
+        avg_one_chan = np.array(beats).mean(axis=0)
+        one_beat_array[data_array_index, start: start+back + forward, chan] = avg_one_chan
+        subject_avg_beat.append(avg_one_chan)
+
+    np.save(f"{str(p)}/subject_data_array_index_{data_array_index}.npy", np.array(subject_avg_beat).T)
+np.save(f"{DATA_DIR}/one_beat_array.npy", one_beat_array)
