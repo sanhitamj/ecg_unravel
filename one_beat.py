@@ -157,8 +157,8 @@ data_array = data_array[mask_df['retain_subject'], :, :]
 # new array to store only one averaged beat
 one_beat_array = np.empty(data_array.shape)
 
-selected_exam_ids = []
-data_array_idx = np.where(mask_df['retain_subject'])
+selected_exam_ids = list(exam_ids)
+data_array_idx = [int(idx) for idx in np.where(mask_df['retain_subject'])[0]]
 start_beat = []
 end_beat = []
 channel_used = []
@@ -168,7 +168,6 @@ for data_array_index in range(len(data_array)):
 
     # associated dataframe index:
     subject = int(summary_frame[summary_frame['new_subject_id'] == data_array_index]['subject'].values[0])
-    selected_exam_ids.append(subject)
 
     # The first channel that has the mode number of peaks
     channel = int(summary_frame[
@@ -223,5 +222,15 @@ for data_array_index in range(len(data_array)):
 np.save(f"{DATA_DIR}/one_beat_array.npy", one_beat_array)
 
 # Save the metadata
-df = pd.DataFrame([selected_exam_ids, data_array_idx, start_beat, end_beat, channel_used])
-df.to_csv(f"{DATA_DIR}/average_beat_metadata.csv", index=False)
+df = pd.DataFrame({
+    "exam_id": selected_exam_ids,
+    "data_arr_idx": data_array_idx,
+    "start_beat": start_beat,
+    "end_beat": end_beat,
+    "channel_used": channel_used,
+})
+
+df.to_csv(
+    f"{DATA_DIR}/average_beat_metadata.csv",
+    index=False
+)
