@@ -5,7 +5,6 @@ import torch
 import json
 import numpy as np
 import pandas as pd
-from pathlib import Path
 
 from scipy.signal import find_peaks
 from scipy.stats import skew
@@ -63,10 +62,8 @@ df = df[df['trace_file'] == 'exams_part16.hdf5']
 filename = f"{DATA_DIR}/exams_part16.hdf5"
 
 with h5py.File(filename, "r") as f:
-    print("Keys in the HDF5 file:", list(f.keys()))
     dataset = f['tracings']
     print("Dataset shape:", dataset.shape)
-    print("Dataset dtype:", dataset.dtype)
     data_array = f['tracings'][()]
     exam_ids = f['exam_id'][()]
 
@@ -74,8 +71,10 @@ with h5py.File(filename, "r") as f:
 # the location of peaks,
 # and the standard deviation of the interbeat intervals.
 # This takes about 3 minutes.
-summary_frame = pd.DataFrame(product(range(data_array.shape[0]), range(data_array.shape[2])),
-                             columns=['subject', 'channel'])
+summary_frame = pd.DataFrame(
+    product(range(data_array.shape[0]), range(data_array.shape[2])),
+    columns=['subject', 'channel']
+)
 summary_frame['n_peaks'] = np.nan
 peak_list = []
 summary_frame['inter_beat_sd'] = np.nan
@@ -158,33 +157,36 @@ data_array = data_array[mask_df['retain_subject'], :, :]
 # new array to store only one averaged beat
 one_beat_array = np.empty(data_array.shape)
 
-# create a directory to store one-subject-one-beat-one-file data
-p = Path(f"{DATA_DIR}/one_beat/")
-p.mkdir(parents=True, exist_ok=True)
-
+selected_exam_ids = []
+data_array_idx = np.where(mask_df['retain_subject'])
+start_beat = []
+end_beat = []
+channel_used = []
 
 # this is the index for the data_array, traces
 for data_array_index in range(len(data_array)):
-    # list to store all channels for a subject
-    subject_avg_beat = []
 
     # associated dataframe index:
     subject = int(summary_frame[summary_frame['new_subject_id'] == data_array_index]['subject'].values[0])
+    selected_exam_ids.append(subject)
 
     # The first channel that has the mode number of peaks
     channel = int(summary_frame[
         (summary_frame['subject'] == subject) &
         (summary_frame['n_peaks'] == summary_frame['mode_n_peaks'])
     ]['channel'].head(1).values[0])
+    channel_used.append(channel)
 
     peaks = summary_frame[
         (summary_frame['subject'] == subject) &
         (summary_frame['channel'] == channel)
     ]['peaks'].values[0]
+
+    # Use the following if the summary_df is read from csv
     # if isinstance(peaks, str):
     #     peaks = [int(item) for item in peaks.replace('[', '').replace(']', '').split()]
 
-    # find average length of the heartbeat
+    # Go through all beats to create an average beat
     i = 0
     beat_length = []
     while i < len(peaks) - 1:
@@ -198,8 +200,10 @@ for data_array_index in range(len(data_array)):
     forward = int(np.ceil(avg_beat_len * 0.70))
 
     start = PEAK_AT - back
+    start_beat.append(start)
+    end_beat.append(PEAK_AT + forward)
 
-    # average the heartbearts in odane beat per channel
+    # average the heartbearts in one beat per channel
     # avg_beat = np.empty((int(back + forward), 12))
     trace = data_array[data_array_index, :, :]
 
@@ -215,7 +219,9 @@ for data_array_index in range(len(data_array)):
 
         avg_one_chan = np.array(beats).mean(axis=0)
         one_beat_array[data_array_index, start: start+back + forward, chan] = avg_one_chan
-        subject_avg_beat.append(avg_one_chan)
 
-    np.save(f"{str(p)}/subject_data_array_index_{data_array_index}.npy", np.array(subject_avg_beat).T)
 np.save(f"{DATA_DIR}/one_beat_array.npy", one_beat_array)
+
+# Save the metadata
+df = pd.DataFrame([selected_exam_ids, data_array_idx, start_beat, end_beat, channel_used])
+df.to_csv(f"{DATA_DIR}/average_beat_metadata.csv", index=False)
