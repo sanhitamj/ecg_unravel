@@ -42,19 +42,23 @@ model.eval()
 
 def predict(
         data_array,
-        df,
-        exam_ids,
+        df=pd.DataFrame,
+        exam_ids=np.array([]),
         reconstruct=False,
         batch_size=10,
         reconstruct_file='reconstruct_16.npy',
 ):
     """
     data_array: 3-D array with patients and their 2-D ECGs
-    df: metadata or part of it from exams.csv
-    exam_ids: exam_ids for the patients in data_array
+    df: optional, metadata or part of it from exams.csv
+    exam_ids: optional, exam_ids for the patients in data_array
     reconstruct: if True, reconstructed ECGs from the neural net are written
     batch_size: for prediction
+
+
+    If not given df and exam_ids, returns a prediction array
     """
+    data_array = data_array.astype(np.float32)
     n_total = len(data_array)
     n_batches = int(np.ceil(n_total/batch_size))
 
@@ -88,18 +92,22 @@ def predict(
             )
 
         # Merge predictions back onto the metadata frame
-        preds = pd.DataFrame({
-            'exam_id': exam_ids[start:end],
-            'torch_pred': y_pred.detach().numpy().squeeze()
-        })
+        if exam_ids.any():
+            preds = pd.DataFrame({
+                'exam_id': exam_ids[start:end],
+                'torch_pred': y_pred.detach().numpy().squeeze()
+            })
+            pred_list.append(preds)
 
         predicted_age[start:end] = y_pred.detach().cpu().numpy().flatten()
-        pred_list.append(preds)
 
-    preds = pd.concat(pred_list, axis=0, ignore_index=True)
-    preds = df.merge(preds, on='exam_id', how='inner')
+    if exam_ids.any():
+        preds = pd.concat(pred_list, axis=0, ignore_index=True)
+        preds = df.merge(preds, on='exam_id', how='inner')
 
-    preds.to_csv(f"{DATA_DIR}/prediction.csv", index=False)
+        preds.to_csv(f"{DATA_DIR}/prediction.csv", index=False)
+    else:
+        return predicted_age
 
     if reconstruct:
         recon_traces = np.concatenate(reconstructed_traces, axis=0)
