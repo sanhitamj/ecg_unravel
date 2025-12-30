@@ -107,9 +107,18 @@ modes.rename(columns={
 summary_frame = summary_frame.merge(modes[['subject', 'mode_n_peaks', 'mode_count']], how='inner', on='subject')
 
 # Add the heart rate from the most common peak count
+mask = summary_frame['n_peaks'] > 0
+summary_frame.loc[mask, 'min_peak'] = summary_frame.loc[mask, 'peaks'].apply(np.nanmin)
+summary_frame.loc[mask, 'max_peak'] = summary_frame.loc[mask, 'peaks'].apply(np.nanmax)
+# Get the average number of observations between peaks
+summary_frame['hr'] = (summary_frame['max_peak'] - summary_frame['min_peak']) / (summary_frame['n_peaks'] - 1)
+# Heart rate is the number of beats per 10 seconds times 6.
+summary_frame['hr'] = 6 * 4096 / summary_frame['hr']
+# Only use the ones where the number of peaks matches the mode of n_peaks
 temp = summary_frame[summary_frame['n_peaks'] == summary_frame['mode_n_peaks']].copy()
-temp['hr'] = temp['n_peaks'] * 60 / 10
-temp = temp.groupby('subject')['hr'].first().reset_index()
+temp = temp.groupby('subject')['hr'].mean().reset_index()
+# Drop the hr variable and merge back the subject-level summary variable.
+summary_frame.drop(columns='hr', inplace=True)
 summary_frame = summary_frame.merge(temp, on='subject', how='left')
 
 # Find the inter_beat_sd_percentile^th percentile of the inter_beat_sd
@@ -213,7 +222,6 @@ for data_array_index in range(len(data_array)):
         for peak in peaks:
             if peak - back >= 0 and peak + forward < 4096:
                 one_beat = trace[int(peak - back):int(peak + forward), chan]
-                # if one_beat.shape == back + forward:
                 beats.append(one_beat)
 
         avg_one_chan = np.array(beats).mean(axis=0)
