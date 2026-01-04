@@ -208,29 +208,37 @@ def predict_with_removal(
 def calculate_removal_error(
         data_array_loc,
         interval,
-        n=1000,
+        total_subjects=1000,
+        n_idx=10,
+        replace_near=True
     ):
     """
     Docstring for removal_error
 
     :param data_array: 3-d array of traces with a single averaged beat
     :param interval: how many pixels to remove
-    :param n: use first n values of the array for predictions; if 0 means use the whole array
+    :param total_subjects: use first n values of the array for predictions; if 0 means use the whole array
+    :param n_idx: go from start to end with n_idx in the range function
     """
 
     data_array = np.load(data_array_loc)
-    if n > 0:
-        data_array = data_array[:n, :, :]
+    if total_subjects > 0 and total_subjects <= len(data_array):
+        data_array = data_array[:total_subjects, :, :]
     avg_pred = predict(data_array)
     rmses = []
     start_pixels = []
     counter = 0
-    for start in range(1775, 2191, 10):
+    for start in range(1775, 2191, n_idx):
         # Using these ends as start_max and end_min for all the subjects, in the averaged beat
         data_array = np.load(data_array_loc)
-        if n > 0:
-            data_array = data_array[:n, :, :]
-        out = predict_with_removal(data_array, start, interval=interval)
+        if total_subjects > 0 and total_subjects <= len(data_array):
+            data_array = data_array[:total_subjects, :, :]
+        out = predict_with_removal(
+            data_array,
+            start,
+            interval=interval,
+            replace_near=replace_near,
+        )
         start_pixels.append(start)
         rmses.append(float(np.sqrt(np.sum(avg_pred - out) ** 2)))
         counter += 1
