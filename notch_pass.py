@@ -11,10 +11,12 @@ import tqdm
 from warnings import warn
 
 from constants import (
-    DATA_INPUT_DIR,
     N_LEADS,
 )
 config = './model/config.json'
+
+# Define the sample frequency. It's 4096 observations over 10 seconds
+samp_freq = 409.6  # Sample frequency (Hz)
 
 # Instantiate the model using the config.json information.
 with open(config, 'r') as f:
@@ -39,11 +41,11 @@ model.load_state_dict(state_dict['model'])
 model.eval()
 
 # Read in exam metadata and limit to file 16.
-df = pd.read_csv(f'./{DATA_INPUT_DIR}/exams.csv')
+df = pd.read_csv(f'./data/exams.csv')
 df = df[df['trace_file'] == 'exams_part16.hdf5']
 
 # Read in raw ECG data for file 16.
-filename = f"./{DATA_INPUT_DIR}/exams_part16.hdf5"
+filename = f"./data/exams_part16.hdf5"
 
 with h5py.File(filename, "r") as f:
     print("Keys in the HDF5 file:", list(f.keys()))
@@ -53,17 +55,16 @@ with h5py.File(filename, "r") as f:
     data_array = f['tracings'][()]
     exam_ids = f['exam_id'][()]
 
-samp_freq = 4096  # Sample frequency (Hz)
 quality_factor = 20.0  # Quality factor
 
-n_total = 1000  # total number of predictions
+n_total = 10_000  # total number of predictions
 batch_size = 10
 n_batches = int(np.ceil(n_total/batch_size))
 
 data_array_trans = np.zeros_like(data_array[:n_total, :, :])
 
 mse = []
-for freq in range(2, 500):
+for freq in range(2, 50):
     notch_freq = freq  # Frequency to be removed from signal (Hz)
     b_notch, a_notch = signal.iirnotch(notch_freq, quality_factor, samp_freq)
     for i in range(n_total):
@@ -90,7 +91,7 @@ for freq in range(2, 500):
 
     preds = pd.concat(pred_list, axis=0, ignore_index=True)
     compare = df.merge(preds, on='exam_id', how='inner')
-    mse.append(float(np.mean((compare['age'] - compare['torch_pred'])**2)))
+    mse.append(float(np.mean((compare['nn_predicted_age'] - compare['torch_pred'])**2)))
 
 os.makedirs('./output/images', exist_ok=True)
 plt.plot(np.arange(2, len(mse) + 2), mse)
