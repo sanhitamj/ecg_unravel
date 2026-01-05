@@ -11,10 +11,12 @@ import tqdm
 from warnings import warn
 
 from constants import (
-    DATA_DIR,
     N_LEADS,
 )
 config = './model/config.json'
+
+# Define the sample frequency. It's 4096 observations over 10 seconds
+samp_freq = 409.6  # Sample frequency (Hz)
 
 # Instantiate the model using the config.json information.
 with open(config, 'r') as f:
@@ -53,10 +55,9 @@ with h5py.File(filename, "r") as f:
     data_array = f['tracings'][()]
     exam_ids = f['exam_id'][()]
 
-samp_freq = 409.6  # Sample frequency (Hz)
 quality_factor = 20.0  # Quality factor
 
-n_total = 1000  # total number of predictions
+n_total = 10_000  # total number of predictions
 batch_size = 10
 n_batches = int(np.ceil(n_total/batch_size))
 
