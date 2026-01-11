@@ -1,5 +1,6 @@
 import h5py
 import json
+import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -15,6 +16,11 @@ from constants import (
 from resnet import ResNet1d
 from train import compute_loss, compute_weights
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
+)
 config = f'{MODEL_DIR}/config.json'
 
 # Instantiate the model using the config.json information.
@@ -208,7 +214,9 @@ def predict_with_removal(
 def calculate_removal_error(
         data_array_loc,
         interval,
-        n=1000,
+        total_subjects=1000,
+        n_idx=1,
+        replace_near=True
     ):
     """
     Docstring for removal_error
@@ -219,23 +227,33 @@ def calculate_removal_error(
     """
 
     data_array = np.load(data_array_loc)
-    if n > 0:
-        data_array = data_array[:n, :, :]
+    if total_subjects > 0 and total_subjects <= len(data_array):
+        data_array = data_array[:total_subjects, :, :]
     avg_pred = predict(data_array)
     rmses = []
     start_pixels = []
     counter = 0
-    for start in range(1775, 2191, 10):
+    for start in range(1900, 2250, n_idx):
         # Using these ends as start_max and end_min for all the subjects, in the averaged beat
         data_array = np.load(data_array_loc)
-        if n > 0:
-            data_array = data_array[:n, :, :]
-        out = predict_with_removal(data_array, start, interval=interval)
+        if total_subjects > 0 and total_subjects <= len(data_array):
+            data_array = data_array[:total_subjects, :, :]
+        out = predict_with_removal(
+            data_array,
+            start,
+            interval=interval,
+            replace_near=replace_near
+        )
         start_pixels.append(start)
         rmses.append(float(np.sqrt(np.sum(avg_pred - out) ** 2)))
         counter += 1
         if counter % 50 == 0:
-            print(f"Iteration {counter} for start pixel {start} done.")
+            logger.info(f"Iteration {counter} for start pixel {start} done.")
+            df = pd.DataFrame({
+                'start_pixel': start_pixels,
+                'rmse': rmses
+            })
+            df.to_csv("rmse_200hz_1000sub_intermediate.csv", index=False)
     return pd.DataFrame({
         'start_pixel': start_pixels,
         'rmse': rmses
