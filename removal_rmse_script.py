@@ -1,10 +1,7 @@
 import logging
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-
-import sys
-sys.path.append("../")
+from pathlib import Path
 
 from evaluate_script import calculate_removal_error
 
@@ -17,6 +14,12 @@ logging.basicConfig(
 # intervals = [x for x in range(10, 26)]
 
 intervals = [10, 11, 12, 20, 21, 22, 23, 24, 25]
+
+results_dir = "removal_data"
+
+p = Path(results_dir)
+if not p.exists():
+    p.mkdir(parents=True, exist_ok=True)
 
 
 def plot_removal_rmse(df_err, traces, pixels, n_subjects):
@@ -41,7 +44,7 @@ def plot_removal_rmse(df_err, traces, pixels, n_subjects):
 
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
     plt.title(f"{pixels} pixels removed; 1000 subjects")
-    plt.savefig(f"n{n_subjects}_s{pixels}.png")
+    plt.savefig(f"{results_dir}/n{n_subjects}_s{pixels}.png")
     plt.close()
 
 
@@ -57,7 +60,7 @@ if __name__ == "__main__":
             replace_near=True
         )
 
-        df_err.to_csv(f"rmse_{interval}pixels_1000sub.csv", index=False)
+        df_err.to_csv(f"{results_dir}/rmse_{interval}pixels_1000sub.csv", index=False)
 
         traces = np.load("../data/one_beat_array.npy")
         plot_removal_rmse(df_err, traces=traces, pixels=interval, n_subjects=1000)

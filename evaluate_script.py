@@ -235,7 +235,10 @@ def calculate_removal_error(
     counter = 0
     for start in range(1900, 2250, n_idx):
         # Using these ends as start_max and end_min for all the subjects, in the averaged beat
+
         data_array = np.load(data_array_loc)
+        #  If there is enough memory, save 2 copies. No need to reread the npy file then
+
         if total_subjects > 0 and total_subjects <= len(data_array):
             data_array = data_array[:total_subjects, :, :]
         out = predict_with_removal(
