@@ -223,7 +223,8 @@ def calculate_removal_error(
 
     :param data_array: 3-d array of traces with a single averaged beat
     :param interval: how many pixels to remove
-    :param n: use first n values of the array for predictions; if 0 means use the whole array
+    :param total_subjects: use first n values of the array for predictions; if 0 means use the whole array
+    :param n_idx: go from start to end with n_idx in the range function
     """
 
     data_array = np.load(data_array_loc)
