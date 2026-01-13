@@ -8,7 +8,6 @@ import pandas as pd
 from resnet import ResNet1d
 from scipy import signal
 import tqdm
-from warnings import warn
 
 from constants import (
     N_LEADS,
@@ -41,11 +40,11 @@ model.load_state_dict(state_dict['model'])
 model.eval()
 
 # Read in exam metadata and limit to file 16.
-df = pd.read_csv(f'./data/exams.csv')
+df = pd.read_csv('./data/exams.csv')
 df = df[df['trace_file'] == 'exams_part16.hdf5']
 
 # Read in raw ECG data for file 16.
-filename = f"./data/exams_part16.hdf5"
+filename = "./data/exams_part16.hdf5"
 
 with h5py.File(filename, "r") as f:
     print("Keys in the HDF5 file:", list(f.keys()))
@@ -70,7 +69,7 @@ for freq in range(2, 50):
     for i in range(n_total):
         for j in range(data_array.shape[2]):
             data_array_trans[i, :, j] = signal.filtfilt(b_notch, a_notch, data_array[i, :, j])
-    
+
     pred_list = []
     predicted_age = np.zeros((n_total,))
     end = 0
@@ -85,7 +84,7 @@ for freq in range(2, 50):
 
         # Merge predictions back onto the metadata frame
         preds = pd.DataFrame({'exam_id': exam_ids[start:end],
-                            'torch_pred': y_pred.detach().numpy().squeeze()})
+                              'torch_pred': y_pred.detach().numpy().squeeze()})
         predicted_age[start:end] = y_pred.detach().cpu().numpy().flatten()
         pred_list.append(preds)
 
