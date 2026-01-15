@@ -219,10 +219,13 @@ if __name__ == "__main__":
 
     with h5py.File(filename, "r") as f:
         dataset = f['tracings']
-        print("Dataset shape:", dataset.shape)
         data_array = f['tracings'][()]
         exam_ids = f['exam_id'][()]
 
     summary_frame, mask_df, data_array, exam_ids = create_summary_frame(data_array, exam_ids)
-    summary_frame.to_csv(f"{DATA_DIR}/peaks_summary.csv")
+
+    # Save the following 2 for data removal from original traces
+    summary_frame.to_csv(f"{DATA_DIR}/beats_summary_frame.csv")
+    np.save(f"{DATA_DIR}/selected_traces_part16.npy", data_array)
+
     create_average_beat(summary_frame, mask_df, data_array, exam_ids)
