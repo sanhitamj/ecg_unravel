@@ -225,7 +225,7 @@ if __name__ == "__main__":
     summary_frame, mask_df, data_array, exam_ids = create_summary_frame(data_array, exam_ids)
 
     # Save the following 2 for data removal from original traces
-    summary_frame.to_csv(f"{DATA_DIR}/beats_summary_frame.csv")
+    summary_frame.to_csv(f"{DATA_DIR}/beats_summary_frame.csv", index=False)
     np.save(f"{DATA_DIR}/selected_traces_part16.npy", data_array)
 
     create_average_beat(summary_frame, mask_df, data_array, exam_ids)
