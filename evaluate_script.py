@@ -199,14 +199,21 @@ def predict_with_removal(
     :param interval: how many points to remove
     """
     end = start + interval  # remove the original values for this range of pixels
-    replace_idx = start - 1  # replace those with the value from this pixel
 
     for i in range(len(data_array)):
         for chan in range(12):
             if replace_near:
-                replace_val = data_array[i, replace_idx, chan]
+                replace_val = data_array[i, start - 1, chan]
             else:
-                replace_val = np.mean(data_array[i, start, chan], data_array[i, end, chan])
+                arange_start = float(data_array[i, start - 1, chan])
+                arange_end = float(data_array[i, end + 1, chan])
+                step = (arange_end - arange_start) / interval
+
+                try:
+                    replace_val = np.arange(arange_start, arange_end, step)
+                except ZeroDivisionError:
+                    # some subjects have faster heartbeats; so there will be zero padding
+                    replace_val = 0
             data_array[i, start:end, chan] = replace_val
     return predict(data_array)
 
@@ -225,6 +232,9 @@ def calculate_removal_error(
     :param interval: how many pixels to remove
     :param total_subjects: use first n values of the array for predictions; if 0 means use the whole array
     :param n_idx: go from start to end with n_idx in the range function
+
+    returns dataframe with 2 columns:
+    start_pixel, rmse
     """
 
     data_array = np.load(data_array_loc)

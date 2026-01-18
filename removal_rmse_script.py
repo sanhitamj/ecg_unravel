@@ -11,11 +11,12 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
 )
 
+DATA_ARRAY = "data/one_beat_array_1000.npy"
 # intervals = [x for x in range(10, 26)]
 
-intervals = [10, 11, 12, 20, 21, 22, 23, 24, 25]
+intervals = [10]
 
-results_dir = "removal_data"
+results_dir = "removal_data_repl_regression"
 
 p = Path(results_dir)
 if not p.exists():
@@ -39,7 +40,7 @@ def plot_removal_rmse(df_err, traces, pixels, n_subjects):
 
     color = 'tab:green'
     ax2.set_ylabel('Averaged Beat', color=color)  # we already handled the x-label with ax1
-    ax2.plot(p, traces[10, start_pixel:end_pixel, 0], color=color, alpha=0.5)
+    ax2.plot(p, traces[23, start_pixel:end_pixel, 0], color=color, alpha=0.5)
     ax2.tick_params(axis='y', labelcolor=color)
 
     fig.tight_layout()  # otherwise the right y-label is slightly clipped
@@ -53,14 +54,14 @@ if __name__ == "__main__":
     for interval in intervals:
         logger.info(f"Starting for removal interval: {interval}")
         df_err = calculate_removal_error(
-            data_array_loc="../data/one_beat_array.npy",
+            data_array_loc=DATA_ARRAY,
             interval=interval,
             total_subjects=1000,
             n_idx=1,
-            replace_near=True
+            replace_near=False
         )
 
         df_err.to_csv(f"{results_dir}/rmse_{interval}pixels_1000sub.csv", index=False)
 
-        traces = np.load("../data/one_beat_array.npy")
+        traces = np.load(DATA_ARRAY)
         plot_removal_rmse(df_err, traces=traces, pixels=interval, n_subjects=1000)
