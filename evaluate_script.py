@@ -51,7 +51,7 @@ def predict(
         df=pd.DataFrame,
         exam_ids=np.array([]),
         reconstruct=False,
-        batch_size=8,
+        batch_size=20,
         reconstruct_file='reconstruct_16.npy',
 ):
     """
@@ -208,9 +208,11 @@ def predict_with_removal(
                 arange_start = float(data_array[i, start - 1, chan])
                 arange_end = float(data_array[i, end + 1, chan])
                 step = (arange_end - arange_start) / interval
-
                 try:
                     replace_val = np.arange(arange_start, arange_end, step)
+                    if len(replace_val) > interval:
+                        replace_val = replace_val[:interval]
+                        # why does this happen?
                 except ZeroDivisionError:
                     # some subjects have faster heartbeats; so there will be zero padding
                     replace_val = 0

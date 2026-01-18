@@ -14,7 +14,7 @@ logging.basicConfig(
 DATA_ARRAY = "data/one_beat_array_1000.npy"
 # intervals = [x for x in range(10, 26)]
 
-intervals = [10]
+intervals = [15, 5, 20, 25, 30, 35, 40]
 
 results_dir = "removal_data_repl_regression"
 

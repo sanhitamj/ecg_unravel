@@ -1,4 +1,4 @@
-name: ecg_precise
+name: ecg
 
 channels:
     - conda-forge
@@ -9,7 +9,7 @@ dependencies:
     - h5py>=2.8
     - jupyter
     - matplotlib>=3.2
-    - numpy>=1.14.3
+    - numpy>=1.14.3, <2.4
     - pandas>=0.22
     - pooch=1.8.2
     - pytorch>=1.2
