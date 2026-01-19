@@ -2,6 +2,7 @@ name: ecg
 
 channels:
     - conda-forge
+    - nvidia
     - pytorch
 
 dependencies:
@@ -13,6 +14,7 @@ dependencies:
     - pandas>=0.22
     - pooch=1.8.2
     - pytorch>=1.2
+    - pytorch-cuda
     - scikit-learn==1.7.1
     - seaborn>=0.9
     - torchvision=0.22.1

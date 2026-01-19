@@ -5,7 +5,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
-import tqdm
 
 from constants import (
     # ABS_AGE_DIFF,
