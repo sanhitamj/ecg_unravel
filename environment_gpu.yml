@@ -1,0 +1,19 @@
+name: gpu
+
+channels:
+    - conda-forge
+
+dependencies:
+    - flake8
+    - h5py>=2.8
+    - jupyter
+    - matplotlib>=3.2
+    - numpy>=1.14.3, <2.4
+    - pandas>=0.22
+    - pooch=1.8.2
+    - scikit-learn==1.7.1
+    - seaborn>=0.9
+    - tqdm>=4.26
+    - pip:
+        - torch --index-url https://download.pytorch.org/whl/cu126
+        - torchvision --index-url https://download.pytorch.org/whl/cu126

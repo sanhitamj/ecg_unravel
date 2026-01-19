@@ -11,10 +11,10 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-DATA_ARRAY = "data/one_beat_array_1000.npy"
+DATA_ARRAY = "data/one_beat_offset_1000.npy"
 # intervals = [x for x in range(10, 26)]
 
-intervals = [15, 5, 20, 25, 30, 35, 40]
+intervals = [x for x in range(2, 40)]
 
 results_dir = "removal_data_repl_regression"
 
@@ -23,12 +23,21 @@ if not p.exists():
     p.mkdir(parents=True, exist_ok=True)
 
 
-def plot_removal_rmse(df_err, traces, pixels, n_subjects):
+def plot_removal_rmse(df_err, traces, pixels, n_subjects, chan=0):
+    """
+    df_err: dataframe with 2 columns, start_pixel and rmse
+    traces: averaged heartbeat trace
+    pixels: how many pixels removed
+    n_subjects: rmse calculated using as many subjects
+    chan: channel used in averaged, for plotting only
+    """
+
     start_pixel = df_err['start_pixel'].min()
     end_pixel = df_err['start_pixel'].max()
     p = [x for x in range(start_pixel, end_pixel)]
 
-    fig, ax1 = plt.subplots()
+    avg_chan_0 = np.mean(traces[:, :, chan], axis=0)
+    _, ax1 = plt.subplots()
 
     color = 'tab:red'
     ax1.set_xlabel('Start Removal Pixel')
@@ -39,13 +48,13 @@ def plot_removal_rmse(df_err, traces, pixels, n_subjects):
     ax2 = ax1.twinx()  # instantiate a second Axes that shares the same x-axis
 
     color = 'tab:green'
-    ax2.set_ylabel('Averaged Beat', color=color)  # we already handled the x-label with ax1
-    ax2.plot(p, traces[23, start_pixel:end_pixel, 0], color=color, alpha=0.5)
+    ax2.set_ylabel(f'Averaged Beat for channel {chan}, {n_subjects} subjects', color=color)
+    ax2.plot(p, avg_chan_0[start_pixel:end_pixel], color=color, alpha=0.5)
     ax2.tick_params(axis='y', labelcolor=color)
 
-    fig.tight_layout()  # otherwise the right y-label is slightly clipped
     plt.title(f"{pixels} pixels removed; 1000 subjects")
     plt.savefig(f"{results_dir}/n{n_subjects}_s{pixels}.png")
+    # plt.show()   # don't use this in a script
     plt.close()
 
 
