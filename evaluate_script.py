@@ -45,7 +45,7 @@ def predict(
         df=pd.DataFrame,
         exam_ids=np.array([]),
         reconstruct=False,
-        batch_size=10,
+        batch_size=8,
         reconstruct_file='reconstruct_16.npy',
 ):
     """
@@ -66,7 +66,7 @@ def predict(
     predicted_age = np.zeros((n_total,))
     end = 0
     reconstructed_traces = []
-    for i in tqdm.tqdm(range(n_batches)):
+    for i in range(n_batches):
         start = end
         end = min((i + 1) * batch_size, n_total)
 
@@ -177,6 +177,79 @@ def read_data(
     if data_file:
         np.save(data_file, data_array)
     return data_array, df, exam_ids
+
+
+def predict_with_removal(
+        data_array,
+        start,
+        interval,
+        replace_near=True
+    ):
+    """
+    Docstring for pred_with_remove
+
+    :param data_array: 3-d numpy array with traces with single averaged beat
+    :param idx: at what index to start removal of the data
+    :param interval: how many points to remove
+    """
+    end = start + interval  # remove the original values for this range of pixels
+    replace_idx = start - 1  # replace those with the value from this pixel
+
+    for i in range(len(data_array)):
+        for chan in range(12):
+            if replace_near:
+                replace_val = data_array[i, replace_idx, chan]
+            else:
+                replace_val = np.mean(data_array[i, start, chan], data_array[i, end, chan])
+            data_array[i, start:end, chan] = replace_val
+    return predict(data_array)
+
+
+def calculate_removal_error(
+        data_array_loc,
+        interval,
+        total_subjects=1000,
+        n_idx=10,
+        replace_near=True
+    ):
+    """
+    Docstring for removal_error
+
+    :param data_array: 3-d array of traces with a single averaged beat
+    :param interval: how many pixels to remove
+    :param total_subjects: use first n values of the array for predictions; if 0 means use the whole array
+    :param n_idx: go from start to end with n_idx in the range function
+    :param replace_near: if true use the last unremoved value for replacement; if false use average of
+    before and after values of the removed patch
+    """
+
+    data_array = np.load(data_array_loc)
+    if total_subjects > 0 and total_subjects <= len(data_array):
+        data_array = data_array[:total_subjects, :, :]
+    avg_pred = predict(data_array)
+    rmses = []
+    start_pixels = []
+    counter = 0
+    for start in range(1775, 2191, n_idx):
+        # Using these ends as start_max and end_min for all the subjects, in the averaged beat
+        data_array = np.load(data_array_loc)
+        if total_subjects > 0 and total_subjects <= len(data_array):
+            data_array = data_array[:total_subjects, :, :]
+        out = predict_with_removal(
+            data_array,
+            start,
+            interval=interval,
+            replace_near=replace_near,
+        )
+        start_pixels.append(start)
+        rmses.append(float(np.sqrt(np.sum(avg_pred - out) ** 2)))
+        counter += 1
+        if counter % 50 == 0:
+            print(f"Iteration {counter} for start pixel {start} done.")
+    return pd.DataFrame({
+        'start_pixel': start_pixels,
+        'rmse': rmses
+    })
 
 
 if __name__ == "__main__":
