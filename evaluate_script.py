@@ -8,7 +8,6 @@ import torch
 import tqdm
 
 from constants import (
-    # ABS_AGE_DIFF,
     DATA_DIR,
     MODEL_DIR,
     N_LEADS,
@@ -234,9 +233,12 @@ def calculate_removal_error(
     :param interval: how many pixels to remove
     :param total_subjects: use first n values of the array for predictions; if 0 means use the whole array
     :param n_idx: go from start to end with n_idx in the range function
+    :param replace_near: if true use the last unremoved value for replacement; if false use average of
+    before and after values of the removed patch
 
     returns dataframe with 2 columns:
     start_pixel, rmse
+
     """
 
     data_array = np.load(data_array_loc)
