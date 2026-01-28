@@ -80,7 +80,11 @@ def predict(
             data_array[start:end, :, :],
             requires_grad=reconstruct  # need this to retreive ECGs after backprop
         ).transpose(-1, -2)
-        y_pred = model(X)
+        
+        if not reconstruct:
+            with torch.no_grad():
+                y_pred = model(X)
+
         if reconstruct:
             X.retain_grad()
             y_pred = model(X)
