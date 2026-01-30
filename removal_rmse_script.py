@@ -12,8 +12,7 @@ logging.basicConfig(
 )
 
 DATA_ARRAY = "data/one_beat_offset_1000.npy"
-intervals = [x for x in range(5, 40)]
-intervals = [15]
+intervals = [x for x in range(2, 40)]
 
 results_dir = "removal_data_repl_step"
 
