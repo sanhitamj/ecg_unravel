@@ -12,13 +12,10 @@ logging.basicConfig(
 )
 
 DATA_ARRAY = "data/one_beat_offset_1000.npy"
-# intervals = [x for x in range(10, 26)]
-
 intervals = [x for x in range(5, 40)]
+intervals = [15]
 
-already_calc_intervals = [2, 3, 4, 9, 14, 19, 24, 24, 29, 26]
-
-results_dir = "removal_data_repl_regression_"
+results_dir = "removal_data_repl_step"
 
 p = Path(results_dir)
 if not p.exists():
@@ -63,17 +60,16 @@ def plot_removal_rmse(df_err, traces, pixels, n_subjects, chan=0):
 if __name__ == "__main__":
 
     for interval in intervals:
-        if interval not in already_calc_intervals:
-            logger.info(f"Starting for removal interval: {interval}")
-            df_err = calculate_removal_error(
-                data_array_loc=DATA_ARRAY,
-                interval=interval,
-                total_subjects=1000,
-                n_idx=1,
-                replace_near=False
-            )
+        logger.info(f"Starting for removal interval: {interval}")
+        df_err = calculate_removal_error(
+            data_array_loc=DATA_ARRAY,
+            interval=interval,
+            total_subjects=1000,
+            n_idx=1,
+            replace_step=True
+        )
 
-            df_err.to_csv(f"{results_dir}/rmse_{interval}pixels_1000sub.csv", index=False)
+        df_err.to_csv(f"{results_dir}/rmse_{interval}pixels_1000sub.csv", index=False)
 
-            traces = np.load(DATA_ARRAY)
-            plot_removal_rmse(df_err, traces=traces, pixels=interval, n_subjects=1000)
+        traces = np.load(DATA_ARRAY)
+        plot_removal_rmse(df_err, traces=traces, pixels=interval, n_subjects=1000)

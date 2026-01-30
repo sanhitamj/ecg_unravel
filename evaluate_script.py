@@ -191,7 +191,7 @@ def predict_with_removal(
         data_array,
         start,
         interval,
-        replace_near=True
+        replace_step=True
     ):
     """
     Docstring for pred_with_remove
@@ -204,17 +204,13 @@ def predict_with_removal(
 
     for i in range(len(data_array)):
         for chan in range(12):
-            if replace_near:
+            if replace_step:
                 replace_val = data_array[i, start - 1, chan]
             else:
                 arange_start = float(data_array[i, start - 1, chan])
                 arange_end = float(data_array[i, end + 1, chan])
-                step = (arange_end - arange_start) / interval
                 try:
-                    replace_val = np.arange(arange_start, arange_end, step)
-                    if len(replace_val) > interval:
-                        replace_val = replace_val[:interval]
-                        # why does this happen?
+                    replace_val = np.linspace(arange_start, arange_end, interval)
                 except ZeroDivisionError:
                     # some subjects have faster heartbeats; so there will be zero padding
                     replace_val = 0
@@ -227,7 +223,7 @@ def calculate_removal_error(
         interval,
         total_subjects=1000,
         n_idx=1,
-        replace_near=True
+        replace_step=True
     ):
     """
     Docstring for removal_error
@@ -236,8 +232,8 @@ def calculate_removal_error(
     :param interval: how many pixels to remove
     :param total_subjects: use first n values of the array for predictions; if 0 means use the whole array
     :param n_idx: go from start to end with n_idx in the range function
-    :param replace_near: if true use the last unremoved value for replacement; if false use average of
-    before and after values of the removed patch
+    :param replace_step: if true use the last unremoved value for replacement, it creates a step 
+    function; if false uses regression values using before and after values of the removed patch
 
     returns dataframe with 2 columns:
     start_pixel, rmse
@@ -263,7 +259,7 @@ def calculate_removal_error(
             data_array,
             start,
             interval=interval,
-            replace_near=replace_near
+            replace_step=replace_step
         )
         start_pixels.append(start)
         rmses.append(float(np.sqrt(np.sum(avg_pred - out) ** 2)))
