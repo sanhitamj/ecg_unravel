@@ -47,6 +47,8 @@ def predict(
         reconstruct=False,
         batch_size=8,
         reconstruct_file='reconstruct_16.npy',
+        outfile=f"{DATA_DIR}/prediction.csv",
+        keep_orig_cols=True,
 ):
     """
     data_array: 3-D array with patients and their 2-D ECGs
@@ -54,7 +56,9 @@ def predict(
     exam_ids: optional, exam_ids for the patients in data_array
     reconstruct: if True, reconstructed ECGs from the neural net are written
     batch_size: for prediction
-
+    reconstruct_file: numpy file to save reconstructed traces
+    outfile: exam_ids, new predictions (torch_pred), original prediction and other metadata
+    keep_orig_cols: if false, keeps only exam_ids and torch_pred
 
     If not given df and exam_ids, returns a prediction array
     """
@@ -104,8 +108,14 @@ def predict(
     if exam_ids.any():
         preds = pd.concat(pred_list, axis=0, ignore_index=True)
         preds = df.merge(preds, on='exam_id', how='inner')
+        # keep only the rows where we have new prediction
+        preds = preds[preds['torch_pred'].notna()].copy()
+        if not keep_orig_cols:
+            preds = preds[['exam_id', 'torch_pred']].copy()
+            preds.to_csv(outfile, index=False)
+            return
+        preds.to_csv(outfile, index=False)
 
-        preds.to_csv(f"{DATA_DIR}/prediction.csv", index=False)
     else:
         return predicted_age
 
