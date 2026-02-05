@@ -107,12 +107,14 @@ def predict(
 
     if exam_ids.any():
         preds = pd.concat(pred_list, axis=0, ignore_index=True)
+        print(f"len(preds): {len(preds)}")
         preds = df.merge(preds, on='exam_id', how='inner')
         # keep only the rows where we have new prediction
         preds = preds[preds['torch_pred'].notna()].copy()
         if not keep_orig_cols:
             preds = preds[['exam_id', 'torch_pred']].copy()
             preds.to_csv(outfile, index=False)
+            print(preds.shape)
             return
         preds.to_csv(outfile, index=False)
 
