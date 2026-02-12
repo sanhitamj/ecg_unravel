@@ -80,7 +80,7 @@ def predict(
             data_array[start:end, :, :],
             requires_grad=reconstruct  # need this to retreive ECGs after backprop
         ).transpose(-1, -2)
-        
+
         if not reconstruct:
             with torch.no_grad():
                 y_pred = model(X)
@@ -232,7 +232,7 @@ def calculate_removal_error(
     :param interval: how many pixels to remove
     :param total_subjects: use first n values of the array for predictions; if 0 means use the whole array
     :param n_idx: go from start to end with n_idx in the range function
-    :param replace_step: if true use the last unremoved value for replacement, it creates a step 
+    :param replace_step: if true use the last unremoved value for replacement, it creates a step
     function; if false uses regression values using before and after values of the removed patch
 
     returns dataframe with 2 columns:
