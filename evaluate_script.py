@@ -48,7 +48,7 @@ def predict(
         batch_size=8,
         reconstruct_file='reconstruct_16.npy',
         outfile=f"{DATA_DIR}/prediction.csv",
-        keep_orig_cols=True,
+        make_pred_plot=True,
 ):
     """
     data_array: 3-D array with patients and their 2-D ECGs
@@ -111,11 +111,7 @@ def predict(
         preds = df.merge(preds, on='exam_id', how='inner')
         # keep only the rows where we have new prediction
         preds = preds[preds['torch_pred'].notna()].copy()
-        if not keep_orig_cols:
-            preds = preds[['exam_id', 'torch_pred']].copy()
-            preds.to_csv(outfile, index=False)
-            print(preds.shape)
-            return
+        print (f"preds.shape = {preds.shape}")
         preds.to_csv(outfile, index=False)
 
     else:
@@ -131,12 +127,12 @@ def predict(
         plt.show()
 
     # Plot the new predictions against the metadata predictions
-
-    plt.scatter(preds['nn_predicted_age'], preds['torch_pred'])
-    plt.xlabel('NN Predicted Age')
-    plt.ylabel('Torch Predicted Age')
-    plt.savefig("plot.png")
-    plt.show()
+    if make_pred_plot:
+        plt.scatter(preds['nn_predicted_age'], preds['torch_pred'])
+        plt.xlabel('NN Predicted Age')
+        plt.ylabel('Torch Predicted Age')
+        plt.savefig("plot.png")
+        plt.show()
     return
 
 
