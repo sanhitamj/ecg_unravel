@@ -267,11 +267,8 @@ def calculate_removal_error(
         )
         start_pixels.append(start)
         rmses.append(float(np.sqrt(np.sum(avg_pred - out) ** 2)))
-        if replace_area > 0:
-            rmses_adjusted.append(float(np.sqrt(np.sum((avg_pred - out) / replace_area) ** 2)))
-        else:
-            assert avg_pred == out
-            rmses_adjusted.append(0)
+        adjusted_errors_sq = [((x - y) / z)**2 if x != y else 0 for x, y, z in zip(avg_pred, out, replace_area)]
+        rmses_adjusted.append(float(np.sqrt(np.sum(adjusted_errors_sq))))
         counter += 1
         if counter % 50 == 0:
             logger.info(f"Iteration {counter} for start pixel {start} done.")
