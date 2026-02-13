@@ -217,7 +217,7 @@ def predict_with_removal(
                     replace_val = 0
             area += np.sum(np.abs(data_array[i, start:end, chan] - replace_val))
             data_array[i, start:end, chan] = replace_val
-        replace_areas.append(float(area + 1))
+        replace_areas.append(float(area))
     return (predict(data_array), replace_areas)
 
 
@@ -267,7 +267,11 @@ def calculate_removal_error(
         )
         start_pixels.append(start)
         rmses.append(float(np.sqrt(np.sum(avg_pred - out) ** 2)))
-        rmses_adjusted.append(float(np.sqrt(np.sum((avg_pred - out) / replace_area) ** 2)))
+        if replace_area > 0:
+            rmses_adjusted.append(float(np.sqrt(np.sum((avg_pred - out) / replace_area) ** 2)))
+        else:
+            assert avg_pred == out
+            rmses_adjusted.append(0)
         counter += 1
         if counter % 50 == 0:
             logger.info(f"Iteration {counter} for start pixel {start} done.")
