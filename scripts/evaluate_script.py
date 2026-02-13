@@ -201,8 +201,9 @@ def predict_with_removal(
     :param interval: how many points to remove
     """
     end = start + interval  # remove the original values for this range of pixels
-
+    replace_areas = []
     for i in range(len(data_array)):
+        area = 0
         for chan in range(12):
             if replace_step:
                 replace_val = data_array[i, start - 1, chan]
@@ -214,8 +215,10 @@ def predict_with_removal(
                 except ZeroDivisionError:
                     # some subjects have faster heartbeats; so there will be zero padding
                     replace_val = 0
+            area += np.sum(np.abs(data_array[i, start:end, chan] - replace_val))
             data_array[i, start:end, chan] = replace_val
-    return predict(data_array)
+        replace_areas.append(float(area + 1))
+    return (predict(data_array), replace_areas)
 
 
 def calculate_removal_error(
@@ -245,6 +248,7 @@ def calculate_removal_error(
         data_array = data_array[:total_subjects, :, :]
     avg_pred = predict(data_array)
     rmses = []
+    rmses_adjusted = []
     start_pixels = []
     counter = 0
     for start in range(1900, 2250, n_idx):
@@ -255,7 +259,7 @@ def calculate_removal_error(
 
         if total_subjects > 0 and total_subjects <= len(data_array):
             data_array = data_array[:total_subjects, :, :]
-        out = predict_with_removal(
+        out, replace_area = predict_with_removal(
             data_array,
             start,
             interval=interval,
@@ -263,6 +267,7 @@ def calculate_removal_error(
         )
         start_pixels.append(start)
         rmses.append(float(np.sqrt(np.sum(avg_pred - out) ** 2)))
+        rmses_adjusted.append(float(np.sqrt(np.sum((avg_pred - out) / replace_area) ** 2)))
         counter += 1
         if counter % 50 == 0:
             logger.info(f"Iteration {counter} for start pixel {start} done.")
@@ -273,7 +278,8 @@ def calculate_removal_error(
             df.to_csv("rmse_200hz_1000sub_intermediate.csv", index=False)
     return pd.DataFrame({
         'start_pixel': start_pixels,
-        'rmse': rmses
+        'rmse': rmses,
+        'rmse_adjusted': rmses_adjusted,
     })
 
 
