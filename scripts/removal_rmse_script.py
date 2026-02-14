@@ -11,7 +11,7 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-DATA_ARRAY = "data/one_beat_offset_1000.npy"
+DATA_ARRAY = "../data/one_beat_offset_1000.npy"
 intervals = [x for x in range(2, 40)]
 
 results_dir = "removal_data_repl_step"
