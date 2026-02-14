@@ -1,13 +1,12 @@
 import h5py
 import json
+import logging
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
-import tqdm
 
 from constants import (
-    # ABS_AGE_DIFF,
     DATA_DIR,
     MODEL_DIR,
     N_LEADS,
@@ -15,6 +14,11 @@ from constants import (
 from resnet import ResNet1d
 from train import compute_loss, compute_weights
 
+logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
+)
 config = f'{MODEL_DIR}/config.json'
 
 # Instantiate the model using the config.json information.
@@ -45,7 +49,7 @@ def predict(
         df=pd.DataFrame,
         exam_ids=np.array([]),
         reconstruct=False,
-        batch_size=8,
+        batch_size=20,
         reconstruct_file='reconstruct_16.npy',
 ):
     """
@@ -76,7 +80,11 @@ def predict(
             data_array[start:end, :, :],
             requires_grad=reconstruct  # need this to retreive ECGs after backprop
         ).transpose(-1, -2)
-        y_pred = model(X)
+
+        if not reconstruct:
+            with torch.no_grad():
+                y_pred = model(X)
+
         if reconstruct:
             X.retain_grad()
             y_pred = model(X)
@@ -183,7 +191,7 @@ def predict_with_removal(
         data_array,
         start,
         interval,
-        replace_near=True
+        replace_step=True
     ):
     """
     Docstring for pred_with_remove
@@ -193,24 +201,32 @@ def predict_with_removal(
     :param interval: how many points to remove
     """
     end = start + interval  # remove the original values for this range of pixels
-    replace_idx = start - 1  # replace those with the value from this pixel
-
+    replace_areas = []
     for i in range(len(data_array)):
+        area = 0
         for chan in range(12):
-            if replace_near:
-                replace_val = data_array[i, replace_idx, chan]
+            if replace_step:
+                replace_val = data_array[i, start - 1, chan]
             else:
-                replace_val = np.mean(data_array[i, start, chan], data_array[i, end, chan])
+                arange_start = float(data_array[i, start - 1, chan])
+                arange_end = float(data_array[i, end + 1, chan])
+                try:
+                    replace_val = np.linspace(arange_start, arange_end, interval)
+                except ZeroDivisionError:
+                    # some subjects have faster heartbeats; so there will be zero padding
+                    replace_val = 0
+            area += np.sum(np.abs(data_array[i, start:end, chan] - replace_val))
             data_array[i, start:end, chan] = replace_val
-    return predict(data_array)
+        replace_areas.append(float(area))
+    return (predict(data_array), replace_areas)
 
 
 def calculate_removal_error(
         data_array_loc,
         interval,
         total_subjects=1000,
-        n_idx=10,
-        replace_near=True
+        n_idx=1,
+        replace_step=True
     ):
     """
     Docstring for removal_error
@@ -219,8 +235,12 @@ def calculate_removal_error(
     :param interval: how many pixels to remove
     :param total_subjects: use first n values of the array for predictions; if 0 means use the whole array
     :param n_idx: go from start to end with n_idx in the range function
-    :param replace_near: if true use the last unremoved value for replacement; if false use average of
-    before and after values of the removed patch
+    :param replace_step: if true use the last unremoved value for replacement, it creates a step
+    function; if false uses regression values using before and after values of the removed patch
+
+    returns dataframe with 2 columns:
+    start_pixel, rmse
+
     """
 
     data_array = np.load(data_array_loc)
@@ -228,27 +248,39 @@ def calculate_removal_error(
         data_array = data_array[:total_subjects, :, :]
     avg_pred = predict(data_array)
     rmses = []
+    rmses_adjusted = []
     start_pixels = []
     counter = 0
-    for start in range(1775, 2191, n_idx):
+    for start in range(1900, 2250, n_idx):
         # Using these ends as start_max and end_min for all the subjects, in the averaged beat
+
         data_array = np.load(data_array_loc)
+        #  If there is enough memory, save 2 copies. No need to reread the npy file then
+
         if total_subjects > 0 and total_subjects <= len(data_array):
             data_array = data_array[:total_subjects, :, :]
-        out = predict_with_removal(
+        out, replace_area = predict_with_removal(
             data_array,
             start,
             interval=interval,
-            replace_near=replace_near,
+            replace_step=replace_step
         )
         start_pixels.append(start)
         rmses.append(float(np.sqrt(np.sum(avg_pred - out) ** 2)))
+        adjusted_errors_sq = [((x - y) / z)**2 if x != y else 0 for x, y, z in zip(avg_pred, out, replace_area)]
+        rmses_adjusted.append(float(np.sqrt(np.sum(adjusted_errors_sq))))
         counter += 1
         if counter % 50 == 0:
-            print(f"Iteration {counter} for start pixel {start} done.")
+            logger.info(f"Iteration {counter} for start pixel {start} done.")
+            df = pd.DataFrame({
+                'start_pixel': start_pixels,
+                'rmse': rmses
+            })
+            df.to_csv("rmse_200hz_1000sub_intermediate.csv", index=False)
     return pd.DataFrame({
         'start_pixel': start_pixels,
-        'rmse': rmses
+        'rmse': rmses,
+        'rmse_adjusted': rmses_adjusted,
     })
 
 

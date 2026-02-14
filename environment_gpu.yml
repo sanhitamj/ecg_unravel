@@ -1,12 +1,9 @@
-name: ecg
+name: gpu
 
 channels:
     - conda-forge
-    - nvidia
-    - pytorch
 
 dependencies:
-    - captum=0.7.0
     - flake8
     - h5py>=2.8
     - jupyter
@@ -14,9 +11,9 @@ dependencies:
     - numpy>=1.14.3, <2.4
     - pandas>=0.22
     - pooch=1.8.2
-    - pytorch>=1.2
-    - pytorch-cuda
     - scikit-learn==1.7.1
     - seaborn>=0.9
-    - torchvision=0.22.1
     - tqdm>=4.26
+    - pip:
+        - torch --index-url https://download.pytorch.org/whl/cu126
+        - torchvision --index-url https://download.pytorch.org/whl/cu126
