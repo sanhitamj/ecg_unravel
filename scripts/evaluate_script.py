@@ -12,6 +12,10 @@ from constants import (
     MODEL_DIR,
     N_LEADS,
 )
+
+import sys
+sys.path.append("../")
+
 from resnet import ResNet1d
 from train import compute_loss, compute_weights
 
