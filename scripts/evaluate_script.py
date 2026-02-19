@@ -111,11 +111,9 @@ def predict(
 
     if exam_ids.any():
         preds = pd.concat(pred_list, axis=0, ignore_index=True)
-        print(f"len(preds): {len(preds)}")
         preds = df.merge(preds, on='exam_id', how='inner')
         # keep only the rows where we have new prediction
         preds = preds[preds['torch_pred'].notna()].copy()
-        print (f"preds.shape = {preds.shape}")
         preds.to_csv(outfile, index=False)
 
     else:
@@ -154,7 +152,7 @@ def read_data(
 
     # Read in exam metadata and limit to file 16.
     df = pd.read_csv(f'{DATA_DIR}/exams.csv')
-    df = df[df['trace_file'] == 'exams_part16.hdf5']
+    df = df[df['trace_file'] == 'exams_part16.hdf5'].copy()
 
     # Read in raw ECG data for file 16.
     filename = f"{DATA_DIR}/exams_part16.hdf5"
@@ -185,6 +183,7 @@ def read_data(
 
     else:
         data_array = data_array[:n_total]
+        exam_ids = exam_ids[:n_total]
 
     if data_file:
         np.save(data_file, data_array)
