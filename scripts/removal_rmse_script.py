@@ -60,7 +60,7 @@ if __name__ == "__main__":
 
     for interval in intervals:
         logger.info(f"Starting for removal interval: {interval}")
-        df_err = calculate_removal_error(
+        df_err, df_all_subjects_and_pixels = calculate_removal_error(
             data_array_loc=DATA_ARRAY,
             interval=interval,
             total_subjects=1000,
@@ -69,6 +69,9 @@ if __name__ == "__main__":
         )
 
         df_err.to_csv(f"{results_dir}/rmse_{interval}pixels_1000sub.csv", index=False)
+        df_all_subjects_and_pixels.to_csv(
+            f"{results_dir}/all_subjects_and_pixels_{interval}pixels_1000sub.csv", index=False
+        )
 
         traces = np.load(DATA_ARRAY)
         plot_removal_rmse(df_err, traces=traces, pixels=interval, n_subjects=1000)

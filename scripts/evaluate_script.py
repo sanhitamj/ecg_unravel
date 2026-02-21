@@ -251,6 +251,9 @@ def calculate_removal_error(
     rmses_adjusted = []
     start_pixels = []
     counter = 0
+
+    all_subjects_and_pixels = []
+
     for start in range(1900, 2250, n_idx):
         # Using these ends as start_max and end_min for all the subjects, in the averaged beat
 
@@ -265,6 +268,13 @@ def calculate_removal_error(
             interval=interval,
             replace_step=replace_step
         )
+
+        all_subjects_and_pixels.append(pd.DataFrame({'start_pixel': start,
+                                                     'subject': np.arange(len(data_array)),
+                                                     'raw_prediction': avg_pred,
+                                                     'replace_prediction': out,
+                                                     'replace_area': replace_area}))
+
         start_pixels.append(start)
         rmses.append(float(np.sqrt(np.sum(avg_pred - out) ** 2)))
         adjusted_errors_sq = [((x - y) / z)**2 if x != y else 0 for x, y, z in zip(avg_pred, out, replace_area)]
@@ -277,11 +287,13 @@ def calculate_removal_error(
                 'rmse': rmses
             })
             df.to_csv("rmse_200hz_1000sub_intermediate.csv", index=False)
-    return pd.DataFrame({
-        'start_pixel': start_pixels,
-        'rmse': rmses,
-        'rmse_adjusted': rmses_adjusted,
-    })
+    return (
+        pd.DataFrame({'start_pixel': start_pixels,
+                      'rmse': rmses,
+                      'rmse_adjusted': rmses_adjusted,
+        }),
+        pd.concat(all_subjects_and_pixels)
+    )
 
 
 if __name__ == "__main__":
