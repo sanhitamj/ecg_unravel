@@ -11,10 +11,11 @@ logging.basicConfig(
     format='%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S'
 )
 
-DATA_ARRAY = "../data/one_beat_offset_1000.npy"
-intervals = [x for x in range(2, 40)]
+DATA_ARRAY = "../data/one_beat_array.npy"
+intervals = [x for x in range(4, 40, 4)]
+intervals += [14]
 
-results_dir = "removal_data_repl_step"
+results_dir = "removal_data_repl_interpol_6k"
 
 p = Path(results_dir)
 if not p.exists():
@@ -50,7 +51,7 @@ def plot_removal_rmse(df_err, traces, pixels, n_subjects, chan=0):
     ax2.plot(p, avg_chan_0[start_pixel:end_pixel], color=color, alpha=0.5)
     ax2.tick_params(axis='y', labelcolor=color)
 
-    plt.title(f"{pixels} pixels removed; 1000 subjects")
+    plt.title(f"{pixels} pixels removed; 6k subjects")
     plt.savefig(f"{results_dir}/n{n_subjects}_s{pixels}.png")
     # plt.show()   # don't use this in a script
     plt.close()
@@ -63,14 +64,14 @@ if __name__ == "__main__":
         df_err, df_all_subjects_and_pixels = calculate_removal_error(
             data_array_loc=DATA_ARRAY,
             interval=interval,
-            total_subjects=1000,
+            total_subjects=0,   # to use the whole array
             n_idx=1,
-            replace_step=True
+            replace_step=False,
         )
 
-        df_err.to_csv(f"{results_dir}/rmse_{interval}pixels_1000sub.csv", index=False)
+        df_err.to_csv(f"{results_dir}/rmse_{interval}pixels_6k_sub.csv", index=False)
         df_all_subjects_and_pixels.to_csv(
-            f"{results_dir}/all_subjects_and_pixels_{interval}pixels_1000sub.csv", index=False
+            f"{results_dir}/all_subjects_and_pixels_{interval}pixels_6k_sub.csv", index=False
         )
 
         traces = np.load(DATA_ARRAY)
