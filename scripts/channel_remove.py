@@ -3,7 +3,6 @@ import numpy as np
 import logging
 import pandas as pd
 from pathlib import Path
-from sklearn.metrics import root_mean_squared_error, r2_score
 
 import sys
 sys.path.append("../")
@@ -33,7 +32,7 @@ def remove_single_chan(outdir, data_array, df, exam_ids):
         # replace the nans with the nanmean, take mean only for the channel axis
         data_array_chan[:, :, chan] = np.nanmean(data_array_chan, axis=2)
 
-        pred_file =f"{outdir}/prediction_chan_{chan}.csv"
+        pred_file = f"{outdir}/prediction_chan_{chan}.csv"
 
         # predict
         predict(
@@ -49,7 +48,6 @@ def remove_single_chan(outdir, data_array, df, exam_ids):
 
 def remove_mult_chan(outdir, data_array, df, exam_ids, n_chan=2):
     logging.info(f"Starting {n_chan} channels removal calculation...")
-
 
     outdir = f"{outdir}/chan_{n_chan}"
     total_channels = 12
@@ -69,7 +67,7 @@ def remove_mult_chan(outdir, data_array, df, exam_ids, n_chan=2):
         for chan in chans:
             data_array_chan[:, :, chan] = np.nanmean(data_array_chan, axis=2)
 
-        pred_file =f"{outdir}/prediction_chan_{chan_str}.csv"
+        pred_file = f"{outdir}/prediction_chan_{chan_str}.csv"
 
         predict(
             data_array_chan,
@@ -105,10 +103,10 @@ def main_func(
     )
 
     exam_ids = exam_ids
-    # remove_single_chan(outdir, data_array, df, exam_ids)
+    remove_single_chan(outdir, data_array, df, exam_ids)
     logging.info("Single channel removal calculation done.")
 
-    remove_mult_chan(outdir, data_array, df, exam_ids, n_chan=2)
+    # remove_mult_chan(outdir, data_array, df, exam_ids, n_chan=2)
 
 
 if __name__ == "__main__":
