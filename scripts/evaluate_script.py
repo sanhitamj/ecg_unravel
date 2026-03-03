@@ -11,6 +11,10 @@ from constants import (
     MODEL_DIR,
     N_LEADS,
 )
+
+import sys
+sys.path.append("../")
+
 from resnet import ResNet1d
 from train import compute_loss, compute_weights
 
@@ -51,6 +55,8 @@ def predict(
         reconstruct=False,
         batch_size=20,
         reconstruct_file='reconstruct_16.npy',
+        outfile=f"{DATA_DIR}/prediction.csv",
+        make_pred_plot=True,
 ):
     """
     data_array: 3-D array with patients and their 2-D ECGs
@@ -58,7 +64,9 @@ def predict(
     exam_ids: optional, exam_ids for the patients in data_array
     reconstruct: if True, reconstructed ECGs from the neural net are written
     batch_size: for prediction
-
+    reconstruct_file: numpy file to save reconstructed traces
+    outfile: exam_ids, new predictions (torch_pred), original prediction and other metadata
+    keep_orig_cols: if false, keeps only exam_ids and torch_pred
 
     If not given df and exam_ids, returns a prediction array
     """
@@ -112,8 +120,10 @@ def predict(
     if exam_ids.any():
         preds = pd.concat(pred_list, axis=0, ignore_index=True)
         preds = df.merge(preds, on='exam_id', how='inner')
+        # keep only the rows where we have new prediction
+        preds = preds[preds['torch_pred'].notna()].copy()
+        preds.to_csv(outfile, index=False)
 
-        preds.to_csv(f"{DATA_DIR}/prediction.csv", index=False)
     else:
         return predicted_age
 
@@ -127,12 +137,12 @@ def predict(
         plt.show()
 
     # Plot the new predictions against the metadata predictions
-
-    plt.scatter(preds['nn_predicted_age'], preds['torch_pred'])
-    plt.xlabel('NN Predicted Age')
-    plt.ylabel('Torch Predicted Age')
-    plt.savefig("plot.png")
-    plt.show()
+    if make_pred_plot:
+        plt.scatter(preds['nn_predicted_age'], preds['torch_pred'])
+        plt.xlabel('NN Predicted Age')
+        plt.ylabel('Torch Predicted Age')
+        plt.savefig("plot.png")
+        plt.show()
     return
 
 
@@ -150,7 +160,7 @@ def read_data(
 
     # Read in exam metadata and limit to file 16.
     df = pd.read_csv(f'{DATA_DIR}/exams.csv')
-    df = df[df['trace_file'] == 'exams_part16.hdf5']
+    df = df[df['trace_file'] == 'exams_part16.hdf5'].copy()
 
     # Read in raw ECG data for file 16.
     filename = f"{DATA_DIR}/exams_part16.hdf5"
@@ -181,6 +191,7 @@ def read_data(
 
     else:
         data_array = data_array[:n_total]
+        exam_ids = exam_ids[:n_total]
 
     if data_file:
         np.save(data_file, data_array)
