@@ -20,7 +20,11 @@ n_total = 100  # to use filters; use a positive number to use first n
 batch_size = 8
 
 
-def remove_single_chan(outdir, data_array, df, exam_ids):
+def remove_single_chan(outdir, data_array, df, exam_ids, replace_avg=True):
+    """
+    replace_avg: if true, replace removed channels by the average of the rest of the channels;
+    if false, replace by 0
+    """
     logging.info("Starting single channel removal calculation...")
     outdir = f"{outdir}/chan_1"
     Path(outdir).mkdir(parents=True, exist_ok=True)
@@ -29,9 +33,11 @@ def remove_single_chan(outdir, data_array, df, exam_ids):
         data_array_chan = data_array.copy()
         # replace the channel with nan
         data_array_chan[:, :, chan] = np.nan
-        # replace the nans with the nanmean, take mean only for the channel axis
-        data_array_chan[:, :, chan] = np.nanmean(data_array_chan, axis=2)
-
+        if replace_avg:
+            # replace the nans with the nanmean, take mean only for the channel axis
+            data_array_chan[:, :, chan] = np.nanmean(data_array_chan, axis=2)
+        else:
+            data_array_chan[:, :, chan] = 0
         pred_file = f"{outdir}/prediction_chan_{chan}.csv"
 
         # predict
@@ -46,16 +52,22 @@ def remove_single_chan(outdir, data_array, df, exam_ids):
         )
 
 
-def remove_mult_chan(outdir, data_array, df, exam_ids, n_chan=2):
+def remove_mult_chan(outdir, data_array, df, exam_ids, n_chan=2, replace_avg=True):
+    """
+    replace_avg: if true, replace removed channels by the average of the rest of the channels;
+    if false, replace by 0
+    """
     logging.info(f"Starting {n_chan} channels removal calculation...")
 
     outdir = f"{outdir}/chan_{n_chan}"
+    Path(outdir).mkdir(parents=True, exist_ok=True)
+
     total_channels = 12
     combs = [comb for comb in combinations([x for x in range(total_channels)], r=n_chan)]
 
     logging.info(f"Number of combinations possible: {len(combs)}")
 
-    for chans in combs:
+    for iter, chans in enumerate(combs):
         data_array_chan = data_array.copy()
         chan_str = '_'.join([str(chan) for chan in chans])
 
@@ -63,9 +75,13 @@ def remove_mult_chan(outdir, data_array, df, exam_ids, n_chan=2):
         for chan in chans:
             data_array_chan[:, :, chan] = np.nan
 
-        # replace the nans with the nanmean, take mean only for the channel axis
-        for chan in chans:
-            data_array_chan[:, :, chan] = np.nanmean(data_array_chan, axis=2)
+        if replace_avg:
+            # replace the nans with the nanmean, take mean only for the channel axis
+            for chan in chans:
+                data_array_chan[:, :, chan] = np.nanmean(data_array_chan, axis=2)
+        else:
+            for chan in chans:
+                data_array_chan[:, :, chan] = 0
 
         pred_file = f"{outdir}/prediction_chan_{chan_str}.csv"
 
@@ -81,13 +97,18 @@ def remove_mult_chan(outdir, data_array, df, exam_ids, n_chan=2):
         predictions = pd.read_csv(pred_file)
 
         assert len(predictions) == len(data_array), "Lengths of the input and predictions do not match."
-
+        if iter % 10 == 0:
+            logging.info(f"Number of combinations processed: {iter + 1}")
 
 def main_func(
     n_total=n_total,
     batch_size=batch_size,
+    replace_avg=True
 ):
     outdir = f"{DATA_DIR}/n_chan_removal"
+    if not replace_avg:
+        outdir += "_repl_zero"
+
     Path(outdir).mkdir(parents=True, exist_ok=True)
 
     # Read the entire file 16; save predictions from that file to outfile
@@ -103,14 +124,15 @@ def main_func(
     )
 
     exam_ids = exam_ids
-    remove_single_chan(outdir, data_array, df, exam_ids)
+    remove_single_chan(outdir, data_array, df, exam_ids, replace_avg=replace_avg)
     logging.info("Single channel removal calculation done.")
 
-    # remove_mult_chan(outdir, data_array, df, exam_ids, n_chan=2)
+    remove_mult_chan(outdir, data_array, df, exam_ids, n_chan=2, replace_avg=replace_avg)
 
 
 if __name__ == "__main__":
     main_func(
         n_total=1000,
-        batch_size=8
+        batch_size=8,
+        replace_avg=False
     )
