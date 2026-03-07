@@ -1,3 +1,14 @@
+# Title
+### Authors
+
+## Abstract
+
+## Introduction
+
+## Age Prediction in Frequency Domain
+
+FFT analysis
+
 ## Averaging Heart Beats into One
 
 To find what part of the ECG contains the most information pertaining to age prediction, we used the following steps:
@@ -28,7 +39,7 @@ For file #16, we found 6044 subjects that match these criteria. Using the young/
 | abs(age - predicted age) < 8 | Neutral   | 3403  |
 | predicted age - age >= 8     | ECG Old   | 1358  |
 
-_selected_subjects_age_vs_orig_predicted.png_
+selected_subjects_age_vs_orig_predicted.png
 
 Figure (something) shows the distribution of their predicted age as a function of their chronological age.
 
@@ -51,4 +62,16 @@ For these 6044 subjects found from the method above, we constructed an average h
 
 ### Age Prediction for the Averaged Beat
 
-Figure (reference) shows the comparison of the predicted ages with the ECG traces as they are, and after averaging.
+Figure *reference* shows the comparison of the predicted ages after averaging heartbeats as a function of the predited ages with the ECG traces as they are. The correlation coefficient between the two predictions is 0.88 (check the number). After averaging the network keeps the trend but does not have the full range of ages.
+
+#### Age prediction with several averaged beats
+
+To confirm that the averaged beat has not lost any information pertaining to age prediction, we concatenated the averaged heartbeat several times. For this exercise, we used the exact averaged length of the heartbeat per subject, and removed the redundant information used in the section *reference*. As more beats are added to the trace, the range of the prediction gets higher. For example, figures *reference* show predictions for 3 and 5 averaged beats concatenated as a function of the age predictions with the traces as they are. The correlation coefficients for these two are respectively, *something* and *something*
+
+## Prediction After Removing Data
+
+To find what part of the ECG trace contains more information about age, we removed parts of the averaged beat and compared the prediction with that of the complete averaged beat. We expect that the error around QRS complex will be most significant because
+a. that's where the biggest change in the signal happens, and also,
+b. for all the subjects, the averaged beats have the QRS peak, at least for one channel at pixel 2048. Because different subjects have different heart rates, the lengths of their heartbeats will be different. So as we go away from the pixel 2048, or the QRS peak, we will be looking at different parts of the ECG for different subjects.
+
+Using the information from section *reference* we removed 14 pixels to correspond to the frequency of *some* Hz; and 36 pixels that correspond to the frequency of *some* Hz.
