@@ -22,13 +22,10 @@ To find what part of the ECG contains the most information pertaining to age pre
 
 For the ease of handling the data, we used only one file, Part 16, from the validation set the authors *reference* have published. For each of the 20,000 subjects in the file, we used the following filters to select good data.
 
-* Found the number QRS peaks from each channel, for each subject. We used `find_peaks` from `scipy`library for this purpose. In this case, peaks includes both crests and troughs.
-
-* Need explanation for these 2 params -
-    1. peak_prominence_for_detection = 0.75  -- parameter for find_peaks?
-    2. inter_beat_sd_percentile = 0.90 -- standard deviation between the beat length should be blah-blah?
-
-* The number of peaks for at least 9, out of 12 channels have to be the same for the subject to be included.
+* Found the number QRS peaks from each channel, for each subject. We used `find_peaks` from `scipy`library for this purpose. In this case, peaks includes both peaks in the positive and negative directions.
+* Peaks are only counted if the vertical difference between the peak and the nearest trough (the `prominence` parameter in `find_peaks`) is at least 0.75.
+* The standard deviation of the interbeat interval must be relatively low. Specifically, the standard deviation of interbeat intervals must be below the $90^{th}$ percentile of such interbeat intervals. The interbeat intervals are calculated using only the channels where the number of observed peaks is the mode number of peaks across all channels for a single subject.
+* The number of peaks for at least 9 out of 12 channels have to be the same for the subject to be included.
 * Heart rate of each included subject has to be between 50 and 120 beats per minute.
 
 For file #16, we found 6044 subjects that match these criteria. Using the young/old criteria from the *reference*, we have used the labels as following:
@@ -47,7 +44,8 @@ Figure (something) shows the distribution of their predicted age as a function o
 
 For these 6044 subjects found from the method above, we constructed an average heart beat in the following way:
 
-* The first channel for which the number of beats is the mode number of beats was used to define the position of the QRS peak, as defined above. For example, if the mode number of QRS peaks is 10, and channel 0 has 10 beats, then used channel 0. The distribution of channels used for 6044 subjects:
+* The first channel for which the number of beats is the mode number of beats was used to define the position of the QRS peak, as defined above. For example, if the mode number of QRS peaks is 10, and channel 0 has 10 beats, then we used channel 0. The distribution of channels used for 6044 subjects is shown in the following table.
+
 | Channel | Count of Subjects |
 | ------- | ----------------- |
 | 0       | ?                 |
