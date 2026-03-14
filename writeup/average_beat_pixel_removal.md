@@ -47,8 +47,7 @@ For file #16, we found 6044 subjects that match these criteria. Using the young/
 | abs(age - predicted age) < 8 | Neutral   | 3403  |
 | predicted age - age >= 8     | ECG Old   | 1358  |
 
-[Chronological Age VS Predicted Age for the sample used in Averaged Heartbeat](https://github.com/sanhitamj/ecg_unravel/blob/avg_pix_remv_write/writeup/selected_subjects_age_vs_orig_predicted.png)
-Figure (something) shows the distribution of their predicted age as a function of their chronological age.
+![Chronological Age VS Predicted Age for the sample used in Averaged Heartbeat](https://github.com/sanhitamj/ecg_unravel/blob/avg_pix_remv_write/writeup/selected_subjects_age_vs_orig_predicted.png)"Figure (something) shows the distribution of their predicted age as a function of their chronological age."
 
 ### Averaging the Heart Beats
 
