@@ -280,11 +280,13 @@ def calculate_removal_error(
             replace_step=replace_step
         )
 
-        all_subjects_and_pixels.append(pd.DataFrame({'start_pixel': start,
-                                                     'subject': np.arange(len(data_array)),
-                                                     'raw_prediction': avg_pred,
-                                                     'replace_prediction': out,
-                                                     'replace_area': replace_area}))
+        all_subjects_and_pixels.append(pd.DataFrame({
+            'start_pixel': start,
+            'subject': np.arange(len(data_array)),
+            'raw_prediction': avg_pred,
+            'replace_prediction': out,
+            'replace_area': replace_area}
+        ))
 
         start_pixels.append(start)
         rmses.append(float(np.sqrt(np.sum(avg_pred - out) ** 2)))
