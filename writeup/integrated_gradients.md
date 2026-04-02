@@ -8,7 +8,7 @@ $$IntegratedGrads_i(x) = (x_i - x'_i) \int_0^1 \frac{\partial F(x' + \alpha (x -
 
 where $F$ is the model relating the input vector $x$ (our averaged heartbeat) to an output $F(x)$ (age).
 
-We calculated integrated gradients for every pixel in every channel for each of the 6044 subjects. We then summarized this information by aggregating information within channels and pixels across subjects. For each channel and pixel, we took the absolute value of the integrated gradient, then averaged those absolute values across subjects. We decided to take the absolute value before averaging so that important effects in opposite directions would not cancel each other out when averaging across subjects.
+We calculated integrated gradients for every pixel in every channel for each of the 6044 subjects. We then summarized this information by aggregating information within channels and pixels across subjects. For each channel and pixel, we took the absolute value of the integrated gradient, then averaged those absolute values across subjects. We decided to take the absolute value before averaging so that important effects in opposite directions would not cancel each other out when averaging across subjects. The following figures show the average absolute integrated gradient intensity (color scale) against an averaged single heartbeat.
 
 ![Average absolute integrated gradient intensity plotted against an averaged single heartbeat, Channel 0](https://github.com/sanhitamj/ecg_unravel/blob/integrated_gradients_writeup/output/images/integrated_gradients_chan0.png)
 
@@ -34,3 +34,4 @@ We calculated integrated gradients for every pixel in every channel for each of 
 
 ![Average absolute integrated gradient intensity plotted against an averaged single heartbeat, Channel 11](https://github.com/sanhitamj/ecg_unravel/blob/integrated_gradients_writeup/output/images/integrated_gradients_chan11.png)
 
+These images show high intensity in the P wave, T wave, and throughout the QRS complex. Notably, they also show intensity in the interval between the QRS complex and the T wave.
