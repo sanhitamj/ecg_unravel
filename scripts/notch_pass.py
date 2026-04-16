@@ -55,7 +55,7 @@ with h5py.File(filename, "r") as f:
     data_array = f['tracings'][()]
     exam_ids = f['exam_id'][()]
 
-quality_factor = 20.0  # Quality factor
+quality_factor = 2.0  # Quality factor
 
 n_total = 10_000  # total number of predictions
 batch_size = 10
