@@ -249,7 +249,7 @@ df = pd.DataFrame({
     "channel_used": channel_used
 })
 df.loc[:, 'age'] = df['exam_id'].map(exam_ids_age)
-df.loc[:, 'orig_pred_age'] = df['exam_id'].map(exam_ids_pred_age)
+df.loc[:, 'nn_predicted_age'] = df['exam_id'].map(exam_ids_pred_age)
 
 df.to_csv(
     f"{DATA_DIR}/average_beat_metadata.csv",
