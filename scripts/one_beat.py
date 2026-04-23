@@ -14,8 +14,8 @@ from constants import (
 )
 
 
-DATA_DIR = "data"
-model_dir = "model"
+DATA_DIR = "../data"
+model_dir = "../model"
 
 peak_prominence_for_detection = 0.75
 # Minimum prominence required to retain a peak
@@ -146,6 +146,8 @@ summary_frame['retain_subject'] = (
     & ((summary_frame['hr'] >= hr_low) & (summary_frame['hr'] <= hr_high))
 )
 
+summary_frame.to_csv(f"{DATA_DIR}/peak_summary.csv", index=False)
+
 # subject_ids for the hfd5 file
 mask_df = summary_frame.groupby(
     'subject'
@@ -160,13 +162,13 @@ for ind, subject_id in zip(
 
 summary_frame.loc[:, 'new_subject_id'] = summary_frame['subject'].map(subject_id_mapping)
 
-exam_ids = exam_ids[mask_df['retain_subject']]
+exam_ids_masked = exam_ids[mask_df['retain_subject']]
 data_array = data_array[mask_df['retain_subject'], :, :]
 
 # new array to store only one averaged beat
 one_beat_array = np.empty(data_array.shape)
 
-selected_exam_ids = list(exam_ids)
+selected_exam_ids = list(exam_ids_masked)
 data_array_idx = [int(idx) for idx in np.where(mask_df['retain_subject'])[0]]
 start_beat = []
 end_beat = []
@@ -229,14 +231,25 @@ for data_array_index in range(len(data_array)):
 
 np.save(f"{DATA_DIR}/one_beat_array.npy", one_beat_array)
 
+exam_ids_age = {}
+for exam_id, age in zip(df['exam_id'].values, df['age'].values):
+    exam_ids_age[exam_id] = age
+
+exam_ids_pred_age = {}
+for exam_id, pred_age in zip(df['exam_id'].values, df['nn_predicted_age'].values):
+    exam_ids_pred_age[exam_id] = pred_age
+
+
 # Save the metadata
 df = pd.DataFrame({
     "exam_id": selected_exam_ids,
     "data_arr_idx": data_array_idx,
     "start_beat": start_beat,
     "end_beat": end_beat,
-    "channel_used": channel_used,
+    "channel_used": channel_used
 })
+df.loc[:, 'age'] = df['exam_id'].map(exam_ids_age)
+df.loc[:, 'nn_predicted_age'] = df['exam_id'].map(exam_ids_pred_age)
 
 df.to_csv(
     f"{DATA_DIR}/average_beat_metadata.csv",
