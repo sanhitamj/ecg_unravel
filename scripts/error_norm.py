@@ -46,7 +46,7 @@ def read_metadata():
     df_meta.loc[young_age, 'age_label'] = 'young'
     df_meta.loc[mid_age, 'age_label'] = 'mid'
     df_meta.loc[old_age, 'age_label'] = 'old'
-
+    df_meta.reset_index(inplace=True)
     return df_meta
 
 
@@ -79,8 +79,11 @@ def plot_max_error_pixel(
         raise FileNotFoundError(f"{filename} not found. Run the data removal script first.")
 
     if use_norm_error:
-        df.loc[:, 'norm_error'] = abs(
-            df['raw_prediction'] - df['replace_prediction']) / (df['replace_area'] + 0.0001)
+        df.loc[:, 'norm_error'] = np.where(
+            df['raw_prediction'] == df['replace_prediction'],
+            0,
+            abs(df['raw_prediction'] - df['replace_prediction']) / (df['replace_area'])
+        )
     else:
         df.loc[:, 'norm_error'] = abs(df['raw_prediction'] - df['replace_prediction'])
 
@@ -89,7 +92,13 @@ def plot_max_error_pixel(
         df.groupby('subject')['norm_error'].idxmax(),
         ['subject', 'start_pixel']
     ].reset_index(drop=True)
-    max_err_pixel.loc[:, 'pred_label'] = df_meta['pred_label']
+
+    max_err_pixel = max_err_pixel.merge(
+        df_meta[['index', 'age_label', 'pred_label']],
+        left_on='subject',
+        right_on='index',
+        how='inner'
+    ).drop(columns=['index'])
 
     fig, ax1 = plt.subplots()
     n_bins = MAX_PIX - MIN_PIX
