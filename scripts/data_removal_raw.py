@@ -19,6 +19,7 @@ start_pct = -0.1  # The lowest percentage to start at
 end_pct = 0.25  # The highest percentage to end at
 window_pct = 0.05  # The size of the deletion window
 by_pct = 0.025  # The increment of the start at each step
+keep_only_retain_subjects = True
 
 import sys
 sys.path.append("../")
@@ -79,10 +80,20 @@ metadata_sorted = []
 for exam_id in exam_ids:
     metadata_sorted.append(metadata[metadata['exam_id'] == exam_id])
 metadata = pd.concat(metadata_sorted)
-metadata.head()
+metadata['subject'] = np.arange(metadata.shape[0])
+
+# Get information on which subjects to retain
+retain_subjects = beats_summary.groupby('subject')['retain_subject'].first().reset_index()
+retain_subjects = retain_subjects[:20000]
+retain_subjects = retain_subjects[retain_subjects['retain_subject'] == True]
 
 # Limit to 20k observations
 data_array = data_array[:20000, :, :]
+
+if keep_only_retain_subjects:
+    data_array = data_array[retain_subjects['subject'].values, :, :]
+    metadata = metadata[metadata['subject'].isin(retain_subjects['subject'].values)]
+    beats_summary = beats_summary[beats_summary['subject'].isin(retain_subjects['subject'].values)]
 
 # Loop through the starting points by the increment, deleting the specified window size.
 out_frames = []
@@ -98,13 +109,15 @@ for i in np.arange(start_pct, end_pct + by_pct, by_pct):
     for subject in range(data_array.shape[0]):
         if ((subject + 1) % 1_000 == 0):
             logger.info(f"Subject {subject + 1} of {data_array.shape[0]}.")
+
         area = 0
+        subject_number = retain_subjects.iloc[subject]['subject']
 
         # Loop through all channels
         for channel in range(data_array.shape[2]):
 
             # Extract the peaks
-            peaks = beats_summary.loc[(beats_summary['subject'] == subject)
+            peaks = beats_summary.loc[(beats_summary['subject'] == subject_number)
                                         & (beats_summary['channel'] == channel), 'peaks'].values[0]
             peaks = [int(item) for item in peaks.replace("[", "").replace("]", "").split()]
 
@@ -158,7 +171,7 @@ for i in np.arange(start_pct, end_pct + by_pct, by_pct):
         y_pred = model(torch.tensor(data_array_del[start:end, :, :], dtype=torch.float).transpose(-1, -2))
 
         # Merge predictions back onto the metadata frame
-        preds = pd.DataFrame({'exam_id': exam_ids[start:end],
+        preds = pd.DataFrame({'exam_id': metadata['exam_id'][start:end],
                               'torch_pred': y_pred.detach().numpy().squeeze()})
         pred_list.append(preds)
 
