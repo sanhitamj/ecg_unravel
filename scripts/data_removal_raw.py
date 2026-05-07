@@ -15,8 +15,8 @@ from constants import (
     N_LEADS,
 )
 
-start_pct = -0.1  # The lowest percentage to start at
-end_pct = 0.25  # The highest percentage to end at
+start_pct = -0.25  # The lowest percentage to start at
+end_pct = 0.4  # The highest percentage to end at
 window_pct = 0.05  # The size of the deletion window
 by_pct = 0.025  # The increment of the start at each step
 keep_only_retain_subjects = True
