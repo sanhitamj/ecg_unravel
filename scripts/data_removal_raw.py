@@ -1,8 +1,6 @@
-from curses import window
 import h5py
 import json
 import logging
-import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
@@ -15,16 +13,16 @@ from constants import (
     N_LEADS,
 )
 
+import sys
+sys.path.append("../")
+
+from resnet import ResNet1d
+
 start_pct = -0.25  # The lowest percentage to start at
 end_pct = 0.4  # The highest percentage to end at
 window_pct = 0.05  # The size of the deletion window
 by_pct = 0.025  # The increment of the start at each step
 keep_only_retain_subjects = True
-
-import sys
-sys.path.append("../")
-
-from resnet import ResNet1d
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -85,7 +83,7 @@ metadata['subject'] = np.arange(metadata.shape[0])
 # Get information on which subjects to retain
 retain_subjects = beats_summary.groupby('subject')['retain_subject'].first().reset_index()
 retain_subjects = retain_subjects[:20000]
-retain_subjects = retain_subjects[retain_subjects['retain_subject'] == True]
+retain_subjects = retain_subjects[retain_subjects['retain_subject']]
 
 # Limit to 20k observations
 data_array = data_array[:20000, :, :]
@@ -118,7 +116,7 @@ for i in np.arange(start_pct, end_pct + by_pct, by_pct):
 
             # Extract the peaks
             peaks = beats_summary.loc[(beats_summary['subject'] == subject_number)
-                                        & (beats_summary['channel'] == channel), 'peaks'].values[0]
+                                      & (beats_summary['channel'] == channel), 'peaks'].values[0]
             peaks = [int(item) for item in peaks.replace("[", "").replace("]", "").split()]
 
             # We can only calculate beat length if there are at least 2 peaks.
@@ -141,13 +139,14 @@ for i in np.arange(start_pct, end_pct + by_pct, by_pct):
                             replace_val
                             )
 
-                        # Area deleted is the sum of the absolute values of difference between the line and the original data
+                        # Area deleted is the sum of the absolute values of difference between the
+                        # line and the original data
                         area += float(
                             np.sum(
                                 np.abs(
-                                    data_array[subject, 
-                                            deletion_starts[i]:deletion_ends[i], 
-                                            channel] 
+                                    data_array[subject,
+                                               deletion_starts[i]:deletion_ends[i],
+                                               channel]
                                     - replace_val)
                                 )
                             )
