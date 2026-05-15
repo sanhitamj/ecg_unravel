@@ -1,4 +1,3 @@
-import h5py
 import json
 import logging
 import numpy as np
@@ -18,11 +17,15 @@ sys.path.append("../")
 
 from resnet import ResNet1d
 
+from scripts.evaluate_script import read_data
+
 start_pct = -0.25  # The lowest percentage to start at
 end_pct = 0.4  # The highest percentage to end at
 window_pct = 0.05  # The size of the deletion window
 by_pct = 0.025  # The increment of the start at each step
 keep_only_retain_subjects = True
+
+n_observations = 20_000
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(
@@ -59,19 +62,9 @@ model.eval()
 
 # Read in exam metadata and limit to file 16.
 logger.info("Reading exam data")
-metadata = pd.read_csv(f'{DATA_DIR}/exams.csv')
-metadata = metadata[metadata['trace_file'] == 'exams_part16.hdf5']
-
-# Read in raw ECG data for file 16.
-filename = f"{DATA_DIR}/exams_part16.hdf5"
-
-with h5py.File(filename, "r") as f:
-    logger.info(f"Keys in the HDF5 file: {list(f.keys())}")
-    dataset = f['tracings']
-    logger.info(f"Dataset shape: {dataset.shape}")
-    logger.info(f"Dataset dtype:, {dataset.dtype}")
-    data_array = f['tracings'][()]
-    exam_ids = f['exam_id'][()]
+data_array, metadata, exam_ids = read_data(
+    n_total=n_observations,
+)
 
 # Brute force sort df to match order of exam_ids
 metadata_sorted = []
@@ -82,11 +75,8 @@ metadata['subject'] = np.arange(metadata.shape[0])
 
 # Get information on which subjects to retain
 retain_subjects = beats_summary.groupby('subject')['retain_subject'].first().reset_index()
-retain_subjects = retain_subjects[:20000]
+retain_subjects = retain_subjects[:n_observations]
 retain_subjects = retain_subjects[retain_subjects['retain_subject']]
-
-# Limit to 20k observations
-data_array = data_array[:20000, :, :]
 
 if keep_only_retain_subjects:
     data_array = data_array[retain_subjects['subject'].values, :, :]
