@@ -1,6 +1,7 @@
 # Save the files downloaded from zenodo in `DATA_INPUT_DIR`
 DATA_DIR = '../data'
 MODEL_DIR = '../model'
+OUTPUT_DIR = '../output'
 
 N_LEADS = 12  # 12 channels for ECG
 # N_TOTAL = 0  # make this 0 to use filters
