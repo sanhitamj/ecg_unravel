@@ -78,7 +78,7 @@ if __name__ == "__main__":
                 data_array_loc=DATA_ARRAY,
                 interval=interval,
                 total_subjects=0,
-                n_idx=0,
+                n_idx=1,
                 pixel_range=(2030, 2070),  # just for the QRS complex and some extra pixels
                 channel=[channel],
                 replace_step=False,

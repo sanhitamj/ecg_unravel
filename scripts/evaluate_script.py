@@ -206,8 +206,6 @@ def predict_with_removal(
         channel=[x for x in range(12)]
     ):
     """
-    Docstring for pred_with_remove
-
     :param data_array: 3-d numpy array with traces with single averaged beat
     :param start: at what index to start removal of the data
     :param interval: how many points to remove
@@ -274,8 +272,8 @@ def calculate_removal_error(
     all_subjects_and_pixels = []
 
     for start in range(pixel_range[0], pixel_range[1], n_idx):
-        # Using these ends as start_max and end_min for all the subjects, in the averaged beat
 
+        # Using these ends as start_max and end_min for all the subjects, in the averaged beat
         data_array = np.load(data_array_loc)
         #  If there is enough memory, save 2 copies. No need to reread the npy file then
 
@@ -300,7 +298,9 @@ def calculate_removal_error(
         if len(channel) == 1:
             out_dict['channel'] = int(channel[0])
         elif len(channel) == 12:
-            out_dict['channel'] = 'all'
+            out_dict['channel'] = 'all'\
+        else:
+            raise ValueError("channel should be either 1 or 12; else El Jefe will be upset")
 
         all_subjects_and_pixels.append(pd.DataFrame(
             out_dict
