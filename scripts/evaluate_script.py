@@ -300,7 +300,7 @@ def calculate_removal_error(
         elif len(channel) == 12:
             out_dict['channel'] = 'all'\
         else:
-            raise ValueError("channel should be either 1 or 12; else El Jefe will be upset")
+            raise ValueError("len(channel) should be either 1 or 12; else El Jefe will be upset")
 
         all_subjects_and_pixels.append(pd.DataFrame(
             out_dict
