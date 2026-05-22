@@ -6,6 +6,12 @@ import numpy as np
 import pandas as pd
 import torch
 
+import sys
+import os
+
+# Add this file's folder to sys.path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
 from constants import (
     DATA_DIR,
     MODEL_DIR,
@@ -25,27 +31,30 @@ logging.basicConfig(
 )
 config = f'{MODEL_DIR}/config.json'
 
-# Instantiate the model using the config.json information.
-with open(config, 'r') as f:
-    config_dict = json.load(f)
-model = ResNet1d(
-    input_dim=(N_LEADS, config_dict['seq_length']),
-    blocks_dim=list(zip(config_dict['net_filter_size'], config_dict['net_seq_lengh'])),
-    n_classes=1,
-    kernel_size=config_dict['kernel_size'],
-    dropout_rate=config_dict['dropout_rate']
-)
 
-device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+def instantiate_model():
+    # Instantiate the model using the config.json information.
+    with open(config, 'r') as f:
+        config_dict = json.load(f)
+    model = ResNet1d(
+        input_dim=(N_LEADS, config_dict['seq_length']),
+        blocks_dim=list(zip(config_dict['net_filter_size'], config_dict['net_seq_lengh'])),
+        n_classes=1,
+        kernel_size=config_dict['kernel_size'],
+        dropout_rate=config_dict['dropout_rate']
+    )
 
-# Retrieve the state dict, which has all the coefficients
-state_dict = (torch.load(f'{MODEL_DIR}/model.pth',
-              weights_only=False,
-              map_location=device))
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-# Load the state dict and set the model to eval mode.
-model.load_state_dict(state_dict['model'])
-model.eval()
+    # Retrieve the state dict, which has all the coefficients
+    state_dict = (torch.load(f'{MODEL_DIR}/model.pth',
+                weights_only=False,
+                map_location=device))
+
+    # Load the state dict and set the model to eval mode.
+    model.load_state_dict(state_dict['model'])
+    model.eval()
+    return model
 
 
 def predict(
@@ -78,6 +87,9 @@ def predict(
     predicted_age = np.zeros((n_total,))
     end = 0
     reconstructed_traces = []
+
+    model = instantiate_model()
+
     for i in range(n_batches):
         start = end
         end = min((i + 1) * batch_size, n_total)
@@ -298,7 +310,7 @@ def calculate_removal_error(
         if len(channel) == 1:
             out_dict['channel'] = int(channel[0])
         elif len(channel) == 12:
-            out_dict['channel'] = 'all'\
+            out_dict['channel'] = 'all'
         else:
             raise ValueError("len(channel) should be either 1 or 12; else El Jefe will be upset")
 
