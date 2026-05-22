@@ -17,3 +17,16 @@ ABS_AGE_DIFF = 1  # the absolute difference between chronological and predicted 
 # NORMAL_ECG = True
 
 # AGE_FILTER = False  # using patients with this chronological age.
+
+# PQRST sections of the averaged hearbeat trace, for plotting only
+waves = {
+    'P': [(1970, 2020), 'green', 'solid'],
+    'Q': [(2030, 2035), 'red', 'solid'],
+    'R-asc-pre': [(2036, 2042), 'blue', 'solid'],
+    'R-asc-post': [(2043, 2048), 'darkred', 'dashed'],
+    'R-desc-pre': [(2049, 2054), 'darkcyan', 'dotted'],
+    'R-desc-post': [(2055, 2063), 'aqua', 'dashdot'],
+    'ST': [(2064, 2119), 'purple', 'solid'],
+    'T': [(2120, 2180), 'orange', 'solid'],
+    'P-Q': [(2020, 2030), 'olive', 'solid']
+}
