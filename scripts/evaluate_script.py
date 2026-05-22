@@ -202,20 +202,23 @@ def predict_with_removal(
         data_array,
         start,
         interval,
-        replace_step=True
+        replace_step=True,
+        channel=[x for x in range(12)]
     ):
     """
-    Docstring for pred_with_remove
-
     :param data_array: 3-d numpy array with traces with single averaged beat
-    :param idx: at what index to start removal of the data
+    :param start: at what index to start removal of the data
     :param interval: how many points to remove
+    :param replace_step: whether to use a step function for replacement; if false uses
+        linear interpolation between the last unremoved value and the first unremoved
+        value after the removed patch
+    :param channel: which channels to remove pixels from; default is all
     """
     end = start + interval  # remove the original values for this range of pixels
     replace_areas = []
     for i in range(len(data_array)):
         area = 0
-        for chan in range(12):
+        for chan in channel:
             if replace_step:
                 replace_val = data_array[i, start - 1, chan]
             else:
@@ -237,7 +240,9 @@ def calculate_removal_error(
         interval,
         total_subjects=1000,
         n_idx=1,
-        replace_step=True
+        pixel_range=(1900, 2250),
+        channel=[x for x in range(12)],
+        replace_step=True,
     ):
     """
     Docstring for removal_error
@@ -263,16 +268,18 @@ def calculate_removal_error(
     start_pixels = []
     counter = 0
 
+
     all_subjects_and_pixels = []
 
-    for start in range(1900, 2250, n_idx):
-        # Using these ends as start_max and end_min for all the subjects, in the averaged beat
+    for start in range(pixel_range[0], pixel_range[1], n_idx):
 
+        # Using these ends as start_max and end_min for all the subjects, in the averaged beat
         data_array = np.load(data_array_loc)
         #  If there is enough memory, save 2 copies. No need to reread the npy file then
 
         if total_subjects > 0 and total_subjects <= len(data_array):
             data_array = data_array[:total_subjects, :, :]
+
         out, replace_area = predict_with_removal(
             data_array,
             start,
@@ -280,17 +287,35 @@ def calculate_removal_error(
             replace_step=replace_step
         )
 
-        all_subjects_and_pixels.append(pd.DataFrame({'start_pixel': start,
-                                                     'subject': np.arange(len(data_array)),
-                                                     'raw_prediction': avg_pred,
-                                                     'replace_prediction': out,
-                                                     'replace_area': replace_area}))
+        out_dict = {
+            'start_pixel': start,
+            'subject': np.arange(len(data_array)),
+            'raw_prediction': avg_pred,
+            'replace_prediction': out,
+            'replace_area': replace_area
+        }
+
+        if len(channel) == 1:
+            out_dict['channel'] = int(channel[0])
+        elif len(channel) == 12:
+            out_dict['channel'] = 'all'\
+        else:
+            raise ValueError("len(channel) should be either 1 or 12; else El Jefe will be upset")
+
+        all_subjects_and_pixels.append(pd.DataFrame(
+            out_dict
+        ))
 
         start_pixels.append(start)
         rmses.append(float(np.sqrt(np.sum(avg_pred - out) ** 2)))
-        adjusted_errors_sq = [((x - y) / z)**2 if x != y else 0 for x, y, z in zip(avg_pred, out, replace_area)]
+        adjusted_errors_sq = [
+            ((x - y) / z)**2 if x != y else 0 for x, y, z in zip(avg_pred, out, replace_area)
+        ]
         rmses_adjusted.append(float(np.sqrt(np.sum(adjusted_errors_sq))))
         counter += 1
+
+        # Saving intermediate results in case the process is interrupted;
+        # also to track progress
         if counter % 50 == 0:
             logger.info(f"Iteration {counter} for start pixel {start} done.")
             df = pd.DataFrame({
@@ -299,9 +324,10 @@ def calculate_removal_error(
             })
             df.to_csv("rmse_200hz_1000sub_intermediate.csv", index=False)
     return (
-        pd.DataFrame({'start_pixel': start_pixels,
-                      'rmse': rmses,
-                      'rmse_adjusted': rmses_adjusted,
+        pd.DataFrame({
+            'start_pixel': start_pixels,
+            'rmse': rmses,
+            'rmse_adjusted': rmses_adjusted,
         }),
         pd.concat(all_subjects_and_pixels)
     )
