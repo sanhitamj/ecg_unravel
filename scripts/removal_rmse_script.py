@@ -89,7 +89,7 @@ if __name__ == "__main__":
                 replace_step=False,
             )
 
-            df_err.to_csv(f"{results_dir}/rmse_{interval}pixels_6k.csv", index=False)
+            df_err.to_csv(f"{results_dir}/rmse_{channel}channel_qrs_{interval}pixels_6k.csv", index=False)
             df_all_subjects_and_pixels.to_csv(
                 f"{results_dir}/all_subjects_{channel}channel_qrs_{interval}pixels_6k.csv",
                 index=False
