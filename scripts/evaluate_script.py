@@ -203,12 +203,13 @@ def predict_with_removal(
         start,
         interval,
         replace_step=True,
-        channel=[x for x in range(12)]
+        channel=np.arange(12),
+        debug=False,
     ):
     """
     :param data_array: 3-d numpy array with traces with single averaged beat
     :param start: at what index to start removal of the data
-    :param interval: how many points to remove
+    :param interval: how many pixels to remove
     :param replace_step: whether to use a step function for replacement; if false uses
         linear interpolation between the last unremoved value and the first unremoved
         value after the removed patch
@@ -222,8 +223,8 @@ def predict_with_removal(
             if replace_step:
                 replace_val = data_array[i, start - 1, chan]
             else:
-                arange_start = float(data_array[i, start - 1, chan])
-                arange_end = float(data_array[i, end + 1, chan])
+                arange_start = float(data_array[i, start, chan])
+                arange_end = float(data_array[i, end - 1,  chan])
                 try:
                     replace_val = np.linspace(arange_start, arange_end, interval)
                 except ZeroDivisionError:
@@ -232,6 +233,9 @@ def predict_with_removal(
             area += np.sum(np.abs(data_array[i, start:end, chan] - replace_val))
             data_array[i, start:end, chan] = replace_val
         replace_areas.append(float(area))
+
+        if debug:
+            return data_array, replace_areas
     return (predict(data_array), replace_areas)
 
 
@@ -268,11 +272,12 @@ def calculate_removal_error(
     start_pixels = []
     counter = 0
 
-
     all_subjects_and_pixels = []
 
     for start in range(pixel_range[0], pixel_range[1], n_idx):
 
+        if start % 10 == 0:
+            logger.info(f"Starting removal at pixel {start}")
         # Using these ends as start_max and end_min for all the subjects, in the averaged beat
         data_array = np.load(data_array_loc)
         #  If there is enough memory, save 2 copies. No need to reread the npy file then
@@ -284,7 +289,8 @@ def calculate_removal_error(
             data_array,
             start,
             interval=interval,
-            replace_step=replace_step
+            replace_step=replace_step,
+            channel=channel,
         )
 
         out_dict = {
@@ -298,9 +304,9 @@ def calculate_removal_error(
         if len(channel) == 1:
             out_dict['channel'] = int(channel[0])
         elif len(channel) == 12:
-            out_dict['channel'] = 'all'\
+            out_dict['channel'] = 'all'
         else:
-            raise ValueError("len(channel) should be either 1 or 12; else El Jefe will be upset")
+            raise ValueError("len(channel) should be either 1 or 12; else El Jefe will be upset!!")
 
         all_subjects_and_pixels.append(pd.DataFrame(
             out_dict

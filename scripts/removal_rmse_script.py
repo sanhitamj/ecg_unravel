@@ -20,9 +20,9 @@ DATA_ARRAY = f"{DATA_DIR}/one_beat_array.npy"
 # Pixel removal per channel and only for the QRS peak:
 # results_dir = f"{OUTPUT_DIR}/removal_data_repl_interpol_6k"
 
-intervals = [4, 8, 12, 14]
-results_dir = f"{OUTPUT_DIR}/removal_data_repl_interpol_chan_qrs_6k"
+intervals = [4, 14]
 
+results_dir = f"{OUTPUT_DIR}/removal_data_repl_interpol_6k_new_run"
 
 p = Path(results_dir)
 if not p.exists():
@@ -69,25 +69,31 @@ if __name__ == "__main__":
     for interval in intervals:
         logger.info(f"Starting for removal interval: {interval}")
 
-        for channel in range(12):
-            # Run this in a for loop for channel by channel removal
-            # removing area from all channels at a time, use
-            # channel = [x for x in range(12)]
-            # For the whole range, use pixel_range=(1900, 2250)
-            df_err, df_all_subjects_and_pixels = calculate_removal_error(
-                data_array_loc=DATA_ARRAY,
-                interval=interval,
-                total_subjects=0,
-                n_idx=1,
-                pixel_range=(2030, 2070),  # just for the QRS complex and some extra pixels
-                channel=[channel],
-                replace_step=False,
-            )
+        # Run this in a for loop for channel by channel removal
+        # removing area from all channels at a time, use
+        channel = [x for x in range(12)]
+        # For the whole range, use pixel_range=(1900, 2250)
 
-            df_err.to_csv(f"{results_dir}/rmse_qrs_{interval}pixels_chan{channel}_6k_sub.csv", index=False)
-            df_all_subjects_and_pixels.to_csv(
-                f"{results_dir}/all_subjects_qrs_pixels_{interval}pixels_chan{channel}_6k_sub.csv", index=False
-            )
+        # for channel in range(12):
+        if isinstance(channel, str):
+            channel = [channel]
+
+        df_err, df_all_subjects_and_pixels = calculate_removal_error(
+            data_array_loc=DATA_ARRAY,
+            interval=interval,
+            total_subjects=0,
+            n_idx=1,
+            # pixel_range=(2030, 2070),  # just for the QRS complex and some extra pixels
+            pixel_range=(1900, 2250),  # use the whole range when running for all channels
+            channel=channel,
+            replace_step=False,
+        )
+
+        df_err.to_csv(f"{results_dir}/rmse_{interval}pixels_6k.csv", index=False)
+        df_all_subjects_and_pixels.to_csv(
+            f"{results_dir}/all_subjects_{interval}pixels_6k.csv",
+            index=False
+        )
 
         traces = np.load(DATA_ARRAY)
         plot_removal_rmse(df_err, traces=traces, pixels=interval, n_subjects=len(traces))
