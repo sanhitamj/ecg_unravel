@@ -272,12 +272,12 @@ def calculate_removal_error(
     start_pixels = []
     counter = 0
 
-    print(channel, type(channel), len(channel))
-
     all_subjects_and_pixels = []
 
     for start in range(pixel_range[0], pixel_range[1], n_idx):
 
+        if start % 10 == 0:
+            logger.info(f"Starting removal at pixel {start}")
         # Using these ends as start_max and end_min for all the subjects, in the averaged beat
         data_array = np.load(data_array_loc)
         #  If there is enough memory, save 2 copies. No need to reread the npy file then
