@@ -203,7 +203,7 @@ def predict_with_removal(
         start,
         interval,
         replace_step=True,
-        channel=[x for x in range(12)],
+        channel=np.arange(12),
         debug=False,
     ):
     """
