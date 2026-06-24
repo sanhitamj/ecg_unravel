@@ -284,7 +284,7 @@ if __name__ == "__main__":
     for n in range(1, 18):
         print(f"Processing file {n}...")
         filename = f"{DATA_DIR}/exams_part{n}.hdf5"
-        if (Path(filename)).is_file():
+        if Path(filename).exists():
             df = pd.read_csv(f'{DATA_DIR}/exams.csv')
             one_beat(df, n)
         else:
