@@ -162,6 +162,7 @@ def read_data(
         n_total=1000,
         data_file='trace_file.npy',
         abs_age_diff=100,
+        normal_ecg=True,
     ):
     """
     Takes in 3 arguments:
@@ -189,9 +190,11 @@ def read_data(
 
     if n_total == 0:
         df = df[
-            (abs(df['nn_predicted_age'] - df['age']) < abs_age_diff) &
-            (df['normal_ecg'])
-        ].copy()
+            (abs(df['nn_predicted_age'] - df['age']) < abs_age_diff)
+        ]
+
+        if normal_ecg:
+            df = df[df['normal_ecg']]
 
         # Find indices of desired exam_ids
         mask = np.isin(exam_ids, df['exam_id'].values)
