@@ -81,7 +81,6 @@ def one_beat(df, n=16):
     """
     df = df[df['trace_file'] == f'exams_part{n}.hdf5']
 
-    # Read in raw ECG data for file 16.
     filename = f"{DATA_DIR}/exams_part{n}.hdf5"
 
     with h5py.File(filename, "r") as f:
@@ -281,7 +280,7 @@ def one_beat(df, n=16):
 
 
 if __name__ == "__main__":
-    for n in range(1, 18):
+    for n in range(16, 18):
         print(f"Processing file {n}...")
         filename = f"{DATA_DIR}/exams_part{n}.hdf5"
         if Path(filename).exists():
