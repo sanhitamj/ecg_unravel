@@ -163,6 +163,7 @@ def read_data(
         data_file='trace_file.npy',
         abs_age_diff=100,
         normal_ecg=True,
+        n=16
     ):
     """
     Takes in 3 arguments:
@@ -173,10 +174,10 @@ def read_data(
 
     # Read in exam metadata and limit to file 16.
     df = pd.read_csv(f'{DATA_DIR}/exams.csv')
-    df = df[df['trace_file'] == 'exams_part16.hdf5'].copy()
+    df = df[df['trace_file'] == f'exams_part{n}.hdf5'].copy()
 
     # Read in raw ECG data for file 16.
-    filename = f"{DATA_DIR}/exams_part16.hdf5"
+    filename = f"{DATA_DIR}/exams_part{n}.hdf5"
 
     with h5py.File(filename, "r") as f:
         print("Keys in the HDF5 file:", list(f.keys()))
