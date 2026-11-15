@@ -38,9 +38,6 @@ def find_qrs_points(
 
     is_first_peak_positive = False
 
-    if skew(signal) < 0:
-        signal = -signal
-
     prim_peaks, _ = find_peaks(signal, prominence=(PRIM_PEAK_PROMINENCE, None))
     sec_peaks, _ = find_peaks(-signal, prominence=(SEC_PEAK_PROMINENCE, None))
     baseline = np.median(signal)
