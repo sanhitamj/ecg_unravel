@@ -38,23 +38,26 @@ def find_qrs_points(
 
     is_first_peak_positive = False
 
-    prim_peaks, _ = find_peaks(signal, prominence=(PRIM_PEAK_PROMINENCE, None))
-    sec_peaks, _ = find_peaks(-signal, prominence=(SEC_PEAK_PROMINENCE, None))
+    pos_peak, _ = find_peaks(signal, prominence=(PRIM_PEAK_PROMINENCE, None))
+    neg_peak, _ = find_peaks(-signal, prominence=(SEC_PEAK_PROMINENCE, None))
     baseline = np.median(signal)
 
-    if len(prim_peaks) > 0:
-        if len(sec_peaks) > 2:
-            sec_peaks = [idx for idx in sec_peaks if abs(idx - prim_peaks[0]) < PEAK_DIST]
-        if len(sec_peaks) > 1:
-            peak_values = abs(signal[sec_peaks])
-            sec_peaks = [sec_peaks[np.argmax(peak_values)]]
+    #  Find QRS measurement code only if primary peaks are found
+    if len(pos_peak) > 0:
+        if len(neg_peak) > 2:
+            neg_peak = [idx for idx in neg_peak if abs(idx - pos_peak[0]) < PEAK_DIST]
+            # if there is any secondary peak, it should be within PEAK_DIST of the primary peak
+            # this is to avoid detecting t-wave peak
+        if len(neg_peak) > 1:
+            peak_values = abs(signal[neg_peak])
+            neg_peak = [neg_peak[np.argmax(peak_values)]]
 
-        is_biphasic = len(sec_peaks) > 0 and sec_peaks[0] - prim_peaks[0] < PEAK_DIST
+        is_biphasic = len(neg_peak) > 0 and neg_peak[0] - pos_peak[0] < PEAK_DIST
         if not is_biphasic:
-            sec_peaks = prim_peaks
+            neg_peak = pos_peak
 
-        first_peak = min(prim_peaks[0], sec_peaks[0])
-        second_peak = max(prim_peaks[0], sec_peaks[0])
+        first_peak = min(pos_peak[0], neg_peak[0])
+        second_peak = max(pos_peak[0], neg_peak[0])
 
         if signal[second_peak] <= signal[first_peak]:
             is_first_peak_positive = True
@@ -78,29 +81,36 @@ def find_qrs_points(
         # To find the QRS offset:
         offset_signal = signal[(second_peak + 1) :]
 
-        if first_peak < second_peak:
+        if first_peak != second_peak:
             if is_first_peak_positive:
                 # find where trace gets greater than the baseline, after the second peak
                 baseline_cross_idx = (signal[second_peak:] >= baseline).argmax() + second_peak
                 slope_change_idx = (signal[second_peak : -1] <= offset_signal).argmin() + second_peak + 1
 
             else:
+                # find where trace voltage falls below the baseline, after the second peak
                 baseline_cross_idx = (signal[second_peak:] <= baseline).argmax() + second_peak
                 slope_change_idx = (offset_signal <= signal[second_peak : -1]).argmin() + second_peak + 1
 
         else:
             if not is_first_peak_positive:
                 signal = -signal
+
+            # find where trace gets greater than the baseline, after the second peak
             baseline_cross_idx = (signal[second_peak:] >= baseline).argmin() + second_peak
+            # find where after crossing baseline, value[i] is lower than value[i+1]
+            # so the trace sign changes
             slope_change_idx = (signal[second_peak : -1] <= offset_signal).argmax() + second_peak + 1
 
-        # use minimum of these:
+        # use minimum of these as the end of QRS complex:
         qrs_offset_idx = min(slope_change_idx, baseline_cross_idx)
 
-        return prim_peaks[0], sec_peaks[0], qrs_onset_idx, qrs_offset_idx, baseline
+        return pos_peak[0], neg_peak[0], qrs_onset_idx, qrs_offset_idx, baseline
 
     else:
-        # if primary peak not found, use min-max of the signal for the amplitude
+        # if no peaks are found, use min-max of the signal for the amplitude
+        pos_peak = signal.argmax()
+        neg_peak = signal[signal.argmax() - PEAK_DIST: signal.argmax() + PEAK_DIST].argmin()
         return signal.argmax(), signal.argmin(), None, None, baseline
 
 
