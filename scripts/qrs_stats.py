@@ -6,7 +6,9 @@ from scipy.signal import find_peaks
 from scipy.stats import skew
 
 PEAK_DIST = 30
-PRIM_PEAK_PROMINENCE = 0.55
+
+# some biphasic signals have almost equal amplitudes for both peaks.
+PRIM_PEAK_PROMINENCE = 0.3
 SEC_PEAK_PROMINENCE = 0.15
 
 def trim_trace(trace):
@@ -38,26 +40,37 @@ def find_qrs_points(
 
     is_first_peak_positive = False
 
-    pos_peak, _ = find_peaks(signal, prominence=(PRIM_PEAK_PROMINENCE, None))
-    neg_peak, _ = find_peaks(-signal, prominence=(SEC_PEAK_PROMINENCE, None))
+    if skew(signal) < 0:
+        prim_peaks, _ = find_peaks(-signal, prominence=(PRIM_PEAK_PROMINENCE, None))
+        sec_peaks, _ = find_peaks(signal, prominence=(SEC_PEAK_PROMINENCE, None))
+    else:
+        prim_peaks, _ = find_peaks(signal, prominence=(PRIM_PEAK_PROMINENCE, None))
+        sec_peaks, _ = find_peaks(-signal, prominence=(SEC_PEAK_PROMINENCE, None))
+
     baseline = np.median(signal)
 
+    if skew(signal):
+        print(len(prim_peaks), len(sec_peaks), "skewed signal")
+
     #  Find QRS measurement code only if primary peaks are found
-    if len(pos_peak) > 0:
-        if len(neg_peak) > 2:
-            neg_peak = [idx for idx in neg_peak if abs(idx - pos_peak[0]) < PEAK_DIST]
+    if len(prim_peaks) > 0:
+        # if multiple ptimary peaks, use the one with the highest amplitude
+        if len(prim_peaks) > 1:
+            prim_peaks = [prim_peaks[np.argmax(abs(signal[prim_peaks]))]]
+        if len(sec_peaks) > 2:
+            sec_peaks = [idx for idx in sec_peaks if abs(idx - prim_peaks[0]) < PEAK_DIST]
             # if there is any secondary peak, it should be within PEAK_DIST of the primary peak
             # this is to avoid detecting t-wave peak
-        if len(neg_peak) > 1:
-            peak_values = abs(signal[neg_peak])
-            neg_peak = [neg_peak[np.argmax(peak_values)]]
+        if len(sec_peaks) > 1:
+            peak_values = abs(signal[sec_peaks])
+            sec_peaks = [sec_peaks[np.argmax(peak_values)]]
 
-        is_biphasic = len(neg_peak) > 0 and neg_peak[0] - pos_peak[0] < PEAK_DIST
+        is_biphasic = len(sec_peaks) > 0 and sec_peaks[0] - prim_peaks[0] < PEAK_DIST
         if not is_biphasic:
-            neg_peak = pos_peak
+            sec_peaks = prim_peaks
 
-        first_peak = min(pos_peak[0], neg_peak[0])
-        second_peak = max(pos_peak[0], neg_peak[0])
+        first_peak = min(prim_peaks[0], sec_peaks[0])
+        second_peak = max(prim_peaks[0], sec_peaks[0])
 
         if signal[second_peak] <= signal[first_peak]:
             is_first_peak_positive = True
@@ -105,12 +118,12 @@ def find_qrs_points(
         # use minimum of these as the end of QRS complex:
         qrs_offset_idx = min(slope_change_idx, baseline_cross_idx)
 
-        return pos_peak[0], neg_peak[0], qrs_onset_idx, qrs_offset_idx, baseline
+        return prim_peaks[0], sec_peaks[0], qrs_onset_idx, qrs_offset_idx, baseline
 
     else:
         # if no peaks are found, use min-max of the signal for the amplitude
-        pos_peak = signal.argmax()
-        neg_peak = signal[signal.argmax() - PEAK_DIST: signal.argmax() + PEAK_DIST].argmin()
+        prim_peaks = signal.argmax()
+        sec_peaks = signal[signal.argmax() - PEAK_DIST: signal.argmax() + PEAK_DIST].argmin()
         return signal.argmax(), signal.argmin(), None, None, baseline
 
 
