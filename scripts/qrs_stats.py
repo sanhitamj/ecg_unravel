@@ -54,7 +54,7 @@ def find_qrs_points(
 
     #  Find QRS measurement code only if primary peaks are found
     if len(prim_peaks) > 0:
-        # if multiple ptimary peaks, use the one with the highest amplitude
+        # if multiple primary peaks, use the one with the highest amplitude
         if len(prim_peaks) > 1:
             prim_peaks = [prim_peaks[np.argmax(abs(signal[prim_peaks]))]]
         if len(sec_peaks) > 2:
